@@ -180,17 +180,27 @@ export const registerCertificateOnBlockchain = async (certData: {
         if (err.code === 'ACTION_REJECTED' || err.code === 4001) {
             errorMessage = 'Transaction was cancelled by user. Please approve the transaction in MetaMask.';
         }
-        // Already registered
-        else if (err.message?.includes('already registered') || err.reason?.includes('already registered')) {
-            errorMessage = 'This certificate is already registered on the blockchain';
+        // Insufficient funds - CHECK MULTIPLE PATTERNS
+        else if (
+            err.code === 'INSUFFICIENT_FUNDS' ||
+            err.message?.toLowerCase().includes('insufficient funds') ||
+            err.message?.toLowerCase().includes('insufficient balance') ||
+            err.reason?.toLowerCase().includes('insufficient funds') ||
+            err.error?.message?.toLowerCase().includes('insufficient funds')
+        ) {
+            errorMessage = 'Insufficient MATIC balance for gas fees. Please add funds to your wallet or get free testnet MATIC from https://faucet.polygon.technology/';
+        }
+        // Already registered - CHECK MULTIPLE PATTERNS
+        else if (
+            err.message?.includes('already registered') || 
+            err.reason?.includes('already registered') ||
+            err.data?.message?.includes('already registered')
+        ) {
+            errorMessage = 'This certificate is already registered on the blockchain. Each certificate can only be registered once.';
         }
         // Internal JSON-RPC error (usually means contract revert)
         else if (err.code === -32603 || errorMessage.includes('Internal JSON-RPC error')) {
             errorMessage = 'Transaction failed. The certificate may already be registered or there was a contract error.';
-        }
-        // Insufficient funds
-        else if (errorMessage.includes('insufficient funds')) {
-            errorMessage = 'Insufficient MATIC balance for gas fees. Please add funds to your wallet.';
         }
         // Network error
         else if (errorMessage.includes('network')) {
