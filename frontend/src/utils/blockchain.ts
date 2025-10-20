@@ -50,31 +50,151 @@ export const registerCertificateOnBlockchain = async (certData: {
     fileHash: string;
 }) => {
     try {
+        // Check and switch to correct network first
+        if (!window.ethereum) {
+            throw new Error('MetaMask not installed');
+        }
+
+        const tempProvider = new ethers.BrowserProvider(window.ethereum);
+        const network = await tempProvider.getNetwork();
+        
+        console.log('🌐 Current network:', network.chainId.toString());
+        
+        if (network.chainId !== 80002n) {
+            console.log('⚠️ Wrong network detected. Switching to Polygon Amoy...');
+            try {
+                await switchToPolygonAmoy();
+                console.log('✅ Switched to Polygon Amoy');
+                // Wait a bit for network to stabilize
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            } catch (switchError: any) {
+                return {
+                    success: false,
+                    error: 'Please switch to Polygon Amoy testnet in MetaMask and try again.'
+                };
+            }
+        }
+
         const contract = await connectToContract();
 
         const { studentName, registrationNumber, fileName, ipfsUrl, fileHash } = certData;
 
-        // Call smart contract - simple and direct
+        // First check if certificate already exists
+        console.log('🔍 Checking if certificate exists on blockchain...');
+        const exists = await contract.certificateExists(fileHash);
+        
+        if (exists) {
+            console.error('❌ Certificate already exists on blockchain');
+            return { 
+                success: false, 
+                error: 'This certificate is already registered on the blockchain. Each certificate can only be registered once.' 
+            };
+        }
+
+        console.log('✅ Certificate not found, proceeding with registration...');
+
+        // Get provider and signer to check for pending transactions
+        if (!window.ethereum) {
+            throw new Error('MetaMask not available');
+        }
+        
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const userAddress = await signer.getAddress();
+        
+        const pendingNonce = await provider.getTransactionCount(userAddress, 'pending');
+        const confirmedNonce = await provider.getTransactionCount(userAddress, 'latest');
+        
+        console.log(`🔢 Nonce check - Pending: ${pendingNonce}, Confirmed: ${confirmedNonce}`);
+        
+        if (pendingNonce > confirmedNonce) {
+            const pendingCount = pendingNonce - confirmedNonce;
+            console.error(`⚠️ You have ${pendingCount} pending transaction(s)`);
+            return {
+                success: false,
+                error: `You have ${pendingCount} pending transaction(s). Please wait for them to confirm or cancel them in MetaMask before uploading a new certificate.`
+            };
+        }
+        
+        console.log('✅ No pending transactions detected');
+
+        // Estimate gas to catch errors early
+        try {
+            const gasEstimate = await contract.registerCertificate.estimateGas(
+                studentName,
+                registrationNumber,
+                fileName,
+                ipfsUrl,
+                fileHash
+            );
+            console.log('⛽ Gas estimate:', gasEstimate.toString());
+        } catch (estimateError: any) {
+            console.error('❌ Gas estimation failed:', estimateError);
+            
+            // Parse error message
+            let errorMessage = 'Transaction would fail: ';
+            if (estimateError.message?.includes('already registered')) {
+                errorMessage = 'This certificate is already registered on the blockchain';
+            } else if (estimateError.reason) {
+                errorMessage += estimateError.reason;
+            } else {
+                errorMessage += estimateError.message || 'Unknown error';
+            }
+            
+            return { success: false, error: errorMessage };
+        }
+
+        // Call smart contract with explicit gas limit
+        console.log('📝 Sending transaction to blockchain...');
         const tx = await contract.registerCertificate(
             studentName,
             registrationNumber,
             fileName,
             ipfsUrl,
-            fileHash
+            fileHash,
+            {
+                gasLimit: 700000 // Set explicit gas limit to avoid estimation issues
+            }
         );
 
-        // Wait for confirmation
-        await tx.wait();
-
-        return { success: true, txHash: tx.hash };
-    } catch (err: any) {
-        console.error("Blockchain error:", err);
+        console.log('⏳ Waiting for transaction confirmation...');
+        console.log('Transaction hash:', tx.hash);
         
-        // Better error message for common case
+        // Wait for confirmation
+        const receipt = await tx.wait();
+        
+        console.log('✅ Transaction confirmed:', receipt.hash);
+
+        return { 
+            success: true, 
+            txHash: receipt.hash,
+            blockNumber: receipt.blockNumber 
+        };
+    } catch (err: any) {
+        console.error("❌ Blockchain error:", err);
+        
+        // Better error messages
         let errorMessage = err.message || 'Blockchain transaction failed';
         
-        if (err.code === -32603 || errorMessage.includes('Internal JSON-RPC error')) {
-            errorMessage = 'Certificate already registered on blockchain';
+        // User rejected transaction
+        if (err.code === 'ACTION_REJECTED' || err.code === 4001) {
+            errorMessage = 'Transaction was cancelled by user. Please approve the transaction in MetaMask.';
+        }
+        // Already registered
+        else if (err.message?.includes('already registered') || err.reason?.includes('already registered')) {
+            errorMessage = 'This certificate is already registered on the blockchain';
+        }
+        // Internal JSON-RPC error (usually means contract revert)
+        else if (err.code === -32603 || errorMessage.includes('Internal JSON-RPC error')) {
+            errorMessage = 'Transaction failed. The certificate may already be registered or there was a contract error.';
+        }
+        // Insufficient funds
+        else if (errorMessage.includes('insufficient funds')) {
+            errorMessage = 'Insufficient MATIC balance for gas fees. Please add funds to your wallet.';
+        }
+        // Network error
+        else if (errorMessage.includes('network')) {
+            errorMessage = 'Network error. Please check your connection and try again.';
         }
         
         return { success: false, error: errorMessage };

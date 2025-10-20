@@ -471,19 +471,8 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
                 })
 
                 if (!blockchainResult.success) {
-                    // Enhanced error messages
-                    let enhancedError = blockchainResult.error
-                    if (blockchainResult.error.includes("already registered")) {
-                        enhancedError = "🔒 This certificate is already registered on the blockchain! Each certificate can only be registered once to maintain data integrity."
-                    } else if (blockchainResult.error.includes("execution reverted")) {
-                        enhancedError = "⛓️ Blockchain transaction was rejected. Please check your wallet connection and try again."
-                    } else if (blockchainResult.error.includes("user rejected") || blockchainResult.error.includes("User denied")) {
-                        enhancedError = "❌ Transaction was cancelled by user. Please approve the transaction in MetaMask to complete the registration."
-                    } else if (blockchainResult.error.includes("insufficient funds")) {
-                        enhancedError = "💰 Insufficient funds for gas fees. Please ensure you have enough MATIC in your wallet."
-                    }
-
-                    showToast(enhancedError, 'error')
+                    // Show the error from blockchain
+                    showToast(blockchainResult.error || 'Blockchain registration failed', 'error')
                     
                     // Reset uploading state
                     setCertificates(certificates.map(c =>
@@ -502,7 +491,8 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
                         fileHash: uploadedData.fileHash,
                         fileName: uploadedData.fileName,
                         fileSize: uploadedData.fileSize,
-                        blockchainTxHash: blockchainResult.txHash
+                        blockchainTxHash: blockchainResult.txHash,
+                        blockchainBlockNumber: blockchainResult.blockNumber
                     },
                     {
                         headers: { Authorization: `Bearer ${token}` }

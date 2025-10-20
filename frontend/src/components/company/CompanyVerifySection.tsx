@@ -3,6 +3,7 @@ import { IconFileCheck, IconChevronLeft, IconChevronRight, IconCheck, IconX, Ico
 import { FileUpload } from '@/components/ui/file-upload'
 import { generateFileHash } from '@/utils/hashUtils'
 import { API_ENDPOINTS } from '@/config/api'
+import { verifyCertificateOnBlockchain } from '@/utils/blockchain'
 import axios from 'axios'
 
 interface CompanyVerifySectionProps {
@@ -96,9 +97,24 @@ export default function CompanyVerifySection({ selectedStudent, onBack, onStuden
 
             // Generate SHA-512 hash
             const fileHash = await generateFileHash(file)
-            console.log('Generated hash:', fileHash)
+            console.log('🔑 Generated hash:', fileHash)
 
-            // Send to backend for verification
+            // Step 1: Verify on blockchain first
+            console.log('🔍 Checking blockchain...')
+            const blockchainResult = await verifyCertificateOnBlockchain(fileHash)
+            
+            if (!blockchainResult.exists) {
+                // Certificate not found on blockchain
+                setVerificationResult({
+                    matched: false,
+                    message: '❌ This certificate is NOT registered on the blockchain. It may be fake or not yet registered.'
+                })
+                return
+            }
+
+            console.log('✅ Certificate found on blockchain:', blockchainResult.certificate)
+
+            // Step 2: Verify in database (for student match)
             const token = localStorage.getItem('companyToken')
             const response = await axios.post(
                 API_ENDPOINTS.COMPANY.VERIFY_CERTIFICATE,
@@ -114,17 +130,33 @@ export default function CompanyVerifySection({ selectedStudent, onBack, onStuden
             )
 
             if (response.data.success) {
-                setVerificationResult({
-                    matched: response.data.matched,
-                    message: response.data.message,
-                    data: response.data.data
-                })
+                if (response.data.matched) {
+                    // Certificate matches both blockchain and student
+                    setVerificationResult({
+                        matched: true,
+                        message: '✅ Certificate verified! This certificate is registered on the blockchain and matches the student records.',
+                        data: {
+                            ...response.data.data,
+                            blockchainVerified: true,
+                            blockchainData: blockchainResult.certificate
+                        }
+                    })
+                } else {
+                    // Certificate exists on blockchain but doesn't match this student
+                    const certData = blockchainResult.certificate
+                    setVerificationResult({
+                        matched: false,
+                        message: certData 
+                            ? `⚠️ This certificate is registered on blockchain but belongs to a different student: ${certData.studentName} (${certData.registrationNumber})`
+                            : '⚠️ This certificate does not match the student records.'
+                    })
+                }
             }
         } catch (error: any) {
             console.error('Verification error:', error)
             setVerificationResult({
                 matched: false,
-                message: error.response?.data?.message || 'Verification failed. Please try again.'
+                message: error.response?.data?.message || error.message || 'Verification failed. Please try again.'
             })
         } finally {
             setVerifying(false)
