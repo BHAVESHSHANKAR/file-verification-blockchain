@@ -1,0 +1,82 @@
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { GraduationCap, Shield, Database, Network, Lock, CheckCircle } from 'lucide-react'
+
+export default function AboutSection() {
+    return (
+        <section id="about">
+            <div className="py-24 md:py-32 bg-white dark:bg-zinc-950">
+                <div className="mx-auto max-w-5xl px-6">
+                    <div className="aspect-16/10 group relative mx-auto flex max-w-[22rem] items-center justify-between sm:max-w-sm">
+                        <div
+                            role="presentation"
+                            className="bg-linear-to-b border-foreground/5 absolute inset-0 z-10 aspect-square animate-spin items-center justify-center rounded-full border-t from-lime-500/15 to-transparent to-25% opacity-0 duration-[3.5s] group-hover:opacity-100 dark:from-white/5"></div>
+                        <div
+                            role="presentation"
+                            className="bg-linear-to-b border-foreground/5 absolute inset-16 z-10 aspect-square scale-90 animate-spin items-center justify-center rounded-full border-t from-blue-500/15 to-transparent to-25% opacity-0 duration-[3.5s] group-hover:opacity-100"></div>
+                        <div className="bg-linear-to-b from-muted-foreground/15 absolute inset-0 flex aspect-square items-center justify-center rounded-full border-t to-transparent to-25%">
+                            <IntegrationCard className="-translate-x-1/6 absolute left-0 top-1/4 -translate-y-1/4">
+                                <Shield className="text-blue-600" />
+                            </IntegrationCard>
+                            <IntegrationCard className="absolute top-0 -translate-y-1/2">
+                                <Database className="text-green-600" />
+                            </IntegrationCard>
+                            <IntegrationCard className="translate-x-1/6 absolute right-0 top-1/4 -translate-y-1/4">
+                                <Network className="text-purple-600" />
+                            </IntegrationCard>
+                        </div>
+                        <div className="bg-linear-to-b from-muted-foreground/15 absolute inset-16 flex aspect-square scale-90 items-center justify-center rounded-full border-t to-transparent to-25%">
+                            <IntegrationCard className="absolute top-0 -translate-y-1/2">
+                                <Lock className="text-red-600" />
+                            </IntegrationCard>
+                            <IntegrationCard className="absolute left-0 top-1/4 -translate-x-1/4 -translate-y-1/4">
+                                <CheckCircle className="text-teal-600" />
+                            </IntegrationCard>
+                            <IntegrationCard className="absolute right-0 top-1/4 -translate-y-1/4 translate-x-1/4">
+                                <GraduationCap className="text-indigo-600" />
+                            </IntegrationCard>
+                        </div>
+                        <div className="absolute inset-x-0 bottom-0 mx-auto my-2 flex w-fit justify-center gap-2">
+                            <div className="bg-muted relative z-20 rounded-full border p-1">
+                                <IntegrationCard
+                                    className="shadow-black-950/10 dark:bg-background size-16 border-black/20 shadow-xl dark:border-white/25 dark:shadow-white/15"
+                                    isCenter={true}>
+                                    <GraduationCap className="text-primary" />
+                                </IntegrationCard>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-linear-to-t from-background relative z-20 mx-auto mt-12 max-w-2xl space-y-6 from-55% text-center">
+                        <h2 className="text-balance text-3xl font-semibold md:text-4xl">About EduVerify</h2>
+                        <p className="text-muted-foreground text-lg">
+                            EduVerify is a revolutionary decentralized platform that transforms educational credential verification using blockchain technology. 
+                            We combine the power of IPFS storage, Polygon Layer 2 blockchain, and Bloom filter algorithms to provide instant, 
+                            tamper-proof verification of academic certificates.
+                        </p>
+                        <p className="text-muted-foreground">
+                            Our mission is to eliminate certificate fraud, reduce verification time from days to seconds, and create a trusted 
+                            ecosystem connecting universities, students, and employers worldwide.
+                        </p>
+
+                        <div className="flex gap-4 justify-center pt-4">
+                            <Button size="sm" asChild>
+                                <a href="#home">Get Started</a>
+                            </Button>
+                            <Button variant="outline" size="sm" asChild>
+                                <a href="#how-it-works">Learn More</a>
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    )
+}
+
+const IntegrationCard = ({ children, className, isCenter = false }: { children: React.ReactNode; className?: string; position?: 'left-top' | 'left-middle' | 'left-bottom' | 'right-top' | 'right-middle' | 'right-bottom'; isCenter?: boolean }) => {
+    return (
+        <div className={cn('relative z-30 flex size-12 rounded-full border bg-white shadow-sm shadow-black/5 dark:bg-white/5 dark:backdrop-blur-md', className)}>
+            <div className={cn('m-auto size-fit *:size-5', isCenter && '*:size-8')}>{children}</div>
+        </div>
+    )
+}
