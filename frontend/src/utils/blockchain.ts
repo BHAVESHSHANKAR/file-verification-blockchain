@@ -300,9 +300,18 @@ export const registerCertificateOnBlockchain = async (certData: {
                 }
 
                 // Get dynamic gas price
-                const feeData = await provider.getFeeData();
-                const gasPrice = feeData.gasPrice ? feeData.gasPrice * 12n / 10n : undefined; // 20% buffer
-
+                // const feeData = await provider.getFeeData();
+                // const gasPrice = feeData.gasPrice ? feeData.gasPrice * 12n / 10n : undefined; // 20% buffer
+                // Get legacy gas price via raw JSON-RPC call
+let gasPrice;
+try {
+    const rawGasPrice = await provider.send('eth_gasPrice', []);
+    gasPrice = BigInt(rawGasPrice) * 12n / 10n; // 20% buffer
+    console.log('⛽ Legacy gas price:', gasPrice.toString());
+} catch (gasError: any) {
+    console.error('❌ Failed to fetch gas price:', gasError);
+    return { success: false, error: 'Failed to fetch gas price. Please try again.' };
+}
                 // Send transaction
                 console.log('📝 Sending transaction to blockchain...', { nonce, gasPrice: gasPrice?.toString() });
                 const tx = await contract.registerCertificate(
