@@ -354,3 +354,80 @@ exports.saveBlockchainData = async (req, res) => {
         });
     }
 };
+
+// Revoke certificate
+exports.revokeCertificateEndpoint = async (req, res) => {
+    try {
+        const { certificateId } = req.params;
+        const { reason, txHash, blockNumber } = req.body;
+
+        if (!reason || !reason.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: 'Revocation reason is required'
+            });
+        }
+
+        // Find student with this certificate
+        const student = await Student.findOne({
+            'certificates._id': certificateId
+        });
+
+        if (!student) {
+            return res.status(404).json({
+                success: false,
+                message: 'Certificate not found'
+            });
+        }
+
+        // Verify university owns this student
+        if (student.university.toString() !== req.university.id) {
+            return res.status(403).json({
+                success: false,
+                message: 'Not authorized to revoke this certificate'
+            });
+        }
+
+        // Find the certificate
+        const certificate = student.certificates.id(certificateId);
+        if (!certificate) {
+            return res.status(404).json({
+                success: false,
+                message: 'Certificate not found'
+            });
+        }
+
+        // Check if already revoked
+        if (certificate.isRevoked) {
+            return res.status(400).json({
+                success: false,
+                message: 'Certificate is already revoked'
+            });
+        }
+
+        // Update certificate with revocation data
+        certificate.isRevoked = true;
+        certificate.revocationReason = reason.trim();
+        certificate.revocationTimestamp = new Date();
+        certificate.revocationTxHash = txHash;
+        certificate.revocationBlockNumber = blockNumber;
+
+        await student.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Certificate revoked successfully',
+            data: {
+                certificate
+            }
+        });
+
+    } catch (error) {
+        console.error('Revoke certificate error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to revoke certificate',
+            error: error.message
+        });
+    }
+};

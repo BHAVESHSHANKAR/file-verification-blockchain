@@ -7,7 +7,8 @@ contract CertificateRegistry {
         string registrationNumber;
         string fileName;
         string ipfsUrl;
-        string fileHash; // SHA-512 hash
+        string ipfsCID; // IPFS CID (hash) for direct access
+        string fileHash; // SHA-512 hash of file content
         address universityAddress;
         uint256 timestamp;
         bool exists;
@@ -55,6 +56,7 @@ contract CertificateRegistry {
      * @param _registrationNumber Student's registration number
      * @param _fileName Name of the certificate file
      * @param _ipfsUrl IPFS URL where certificate is stored
+     * @param _ipfsCID IPFS CID (hash) for direct access
      * @param _fileHash SHA-512 hash of the certificate file
      */
     function registerCertificate(
@@ -62,12 +64,14 @@ contract CertificateRegistry {
         string memory _registrationNumber,
         string memory _fileName,
         string memory _ipfsUrl,
+        string memory _ipfsCID,
         string memory _fileHash
     ) public returns (bool) {
         require(bytes(_studentName).length > 0, "Student name cannot be empty");
         require(bytes(_registrationNumber).length > 0, "Registration number cannot be empty");
         require(bytes(_fileName).length > 0, "File name cannot be empty");
         require(bytes(_ipfsUrl).length > 0, "IPFS URL cannot be empty");
+        require(bytes(_ipfsCID).length > 0, "IPFS CID cannot be empty");
         require(bytes(_fileHash).length > 0, "File hash cannot be empty");
         require(!certificates[_fileHash].exists, "Certificate already registered");
 
@@ -76,6 +80,7 @@ contract CertificateRegistry {
             registrationNumber: _registrationNumber,
             fileName: _fileName,
             ipfsUrl: _ipfsUrl,
+            ipfsCID: _ipfsCID,
             fileHash: _fileHash,
             universityAddress: msg.sender,
             timestamp: block.timestamp,
@@ -158,15 +163,13 @@ contract CertificateRegistry {
     }
 
     /**
-     * @dev Revoke a certificate
+     * @dev Revoke a certificate (simple revocation without replacement)
      * @param _fileHash SHA-512 hash of the certificate to revoke
      * @param _reason Reason for revocation
-     * @param _replacementCertificateHash Hash of replacement certificate (empty if none)
      */
     function revokeCertificate(
         string memory _fileHash,
-        string memory _reason,
-        string memory _replacementCertificateHash
+        string memory _reason
     ) public returns (bool) {
         require(certificates[_fileHash].exists, "Certificate does not exist");
         require(!certificates[_fileHash].isRevoked, "Certificate already revoked");
@@ -176,23 +179,100 @@ contract CertificateRegistry {
         );
         require(bytes(_reason).length > 0, "Revocation reason cannot be empty");
 
-        // If replacement certificate is provided, verify it exists
-        if (bytes(_replacementCertificateHash).length > 0) {
-            require(
-                certificates[_replacementCertificateHash].exists,
-                "Replacement certificate does not exist"
-            );
-        }
-
         certificates[_fileHash].isRevoked = true;
         certificates[_fileHash].revocationReason = _reason;
         certificates[_fileHash].revocationTimestamp = block.timestamp;
-        certificates[_fileHash].replacementCertificateHash = _replacementCertificateHash;
 
         emit CertificateRevoked(
             _fileHash,
             _reason,
-            _replacementCertificateHash,
+            "",
+            msg.sender,
+            block.timestamp
+        );
+
+        return true;
+    }
+
+    /**
+     * @dev Replace a certificate (revoke old and register new in one transaction)
+     * @param _oldFileHash SHA-512 hash of the certificate to revoke
+     * @param _reason Reason for replacement
+     * @param _studentName Name of the student (for new certificate)
+     * @param _registrationNumber Student's registration number
+     * @param _fileName Name of the new certificate file
+     * @param _ipfsUrl IPFS URL where new certificate is stored
+     * @param _ipfsCID IPFS CID of new certificate
+     * @param _newFileHash SHA-512 hash of the new certificate file
+     */
+    function replaceCertificate(
+        string memory _oldFileHash,
+        string memory _reason,
+        string memory _studentName,
+        string memory _registrationNumber,
+        string memory _fileName,
+        string memory _ipfsUrl,
+        string memory _ipfsCID,
+        string memory _newFileHash
+    ) public returns (bool) {
+        // Validate old certificate
+        require(certificates[_oldFileHash].exists, "Old certificate does not exist");
+        require(!certificates[_oldFileHash].isRevoked, "Old certificate already revoked");
+        require(
+            certificates[_oldFileHash].universityAddress == msg.sender,
+            "Only issuing university can replace"
+        );
+        require(bytes(_reason).length > 0, "Replacement reason cannot be empty");
+
+        // Validate new certificate data
+        require(bytes(_studentName).length > 0, "Student name cannot be empty");
+        require(bytes(_registrationNumber).length > 0, "Registration number cannot be empty");
+        require(bytes(_fileName).length > 0, "File name cannot be empty");
+        require(bytes(_ipfsUrl).length > 0, "IPFS URL cannot be empty");
+        require(bytes(_ipfsCID).length > 0, "IPFS CID cannot be empty");
+        require(bytes(_newFileHash).length > 0, "New file hash cannot be empty");
+        require(!certificates[_newFileHash].exists, "New certificate already registered");
+
+        // Revoke old certificate
+        certificates[_oldFileHash].isRevoked = true;
+        certificates[_oldFileHash].revocationReason = _reason;
+        certificates[_oldFileHash].revocationTimestamp = block.timestamp;
+        certificates[_oldFileHash].replacementCertificateHash = _newFileHash;
+
+        // Register new certificate
+        Certificate memory newCert = Certificate({
+            studentName: _studentName,
+            registrationNumber: _registrationNumber,
+            fileName: _fileName,
+            ipfsUrl: _ipfsUrl,
+            ipfsCID: _ipfsCID,
+            fileHash: _newFileHash,
+            universityAddress: msg.sender,
+            timestamp: block.timestamp,
+            exists: true,
+            isRevoked: false,
+            revocationReason: "",
+            revocationTimestamp: 0,
+            replacementCertificateHash: ""
+        });
+
+        certificates[_newFileHash] = newCert;
+        universityCertificates[msg.sender].push(_newFileHash);
+        allCertificateHashes.push(_newFileHash);
+
+        // Emit events
+        emit CertificateRevoked(
+            _oldFileHash,
+            _reason,
+            _newFileHash,
+            msg.sender,
+            block.timestamp
+        );
+
+        emit CertificateRegistered(
+            _newFileHash,
+            _studentName,
+            _registrationNumber,
             msg.sender,
             block.timestamp
         );

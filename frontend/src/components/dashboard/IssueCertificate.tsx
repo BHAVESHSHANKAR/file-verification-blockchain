@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Award, ArrowLeft, User, Upload, FileText, Loader2, CheckCircle, X } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Award, ArrowLeft, User, Upload, FileText, Loader2, CheckCircle, X, Ban, AlertTriangle } from 'lucide-react'
 import axios from 'axios'
 import { API_ENDPOINTS } from '@/config/api'
-import { registerCertificateOnBlockchain } from '@/utils/blockchain'
+import { registerCertificateOnBlockchain, revokeCertificate } from '@/utils/blockchain'
 import BlockchainSuccessModal from './BlockchainSuccessModal'
 
 
@@ -54,10 +56,14 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
         fileName: string
         fileSize: number
         ipfsHash: string
+        fileHash: string
         issuedAt: string
         blockchainTxHash?: string
         blockchainBlockNumber?: number
         blockchainVerified?: boolean
+        isRevoked?: boolean
+        revocationReason?: string
+        revocationTimestamp?: string
     }>>([])
     const [loadingCertificates, setLoadingCertificates] = useState(false)
     const [currentPage, setCurrentPage] = useState(1)
@@ -71,6 +77,12 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
     // Upload cooldown state
     const [uploadCooldown, setUploadCooldown] = useState(false)
     const [cooldownSeconds, setCooldownSeconds] = useState(0)
+
+    // Revoke modal state
+    const [revokeModalVisible, setRevokeModalVisible] = useState(false)
+    const [selectedCertForRevoke, setSelectedCertForRevoke] = useState<any>(null)
+    const [revocationReason, setRevocationReason] = useState('')
+    const [isRevoking, setIsRevoking] = useState(false)
 
     useEffect(() => {
         if (preSelectedStudent) {
@@ -459,6 +471,16 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
             if (response.data.success) {
                 const uploadedData = response.data.data
 
+                // DEBUG: Log what backend returned
+                console.log('📦 Data from backend:', {
+                    ipfsHash: uploadedData.ipfsHash,
+                    ipfsHashLength: uploadedData.ipfsHash?.length,
+                    ipfsHashStartsWith: uploadedData.ipfsHash?.substring(0, 2),
+                    fileHash: uploadedData.fileHash,
+                    fileHashLength: uploadedData.fileHash?.length,
+                    fileHashStartsWith: uploadedData.fileHash?.substring(0, 2)
+                });
+
                 // Step 2: Register on blockchain
                 showToast('Registering on blockchain...', 'success')
                 
@@ -467,6 +489,7 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
                     registrationNumber: student!.registrationNumber,
                     fileName: uploadedData.fileName,
                     ipfsUrl: uploadedData.ipfsUrl,
+                    ipfsHash: uploadedData.ipfsHash,
                     fileHash: uploadedData.fileHash
                 })
 
@@ -545,6 +568,78 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
     }
 
 
+
+    /**
+     * Handle certificate revocation
+     */
+    const handleRevokeCertificate = async () => {
+        if (!selectedCertForRevoke || !revocationReason.trim()) {
+            showToast('Please provide a reason for revocation', 'error')
+            return
+        }
+
+        setIsRevoking(true)
+
+        try {
+            // Get the file hash from the certificate
+            const fileHash = selectedCertForRevoke.fileHash
+
+            console.log('📋 Certificate data:', {
+                certificateName: selectedCertForRevoke.certificateName,
+                fileHash: fileHash,
+                blockchainVerified: selectedCertForRevoke.blockchainVerified,
+                blockchainTxHash: selectedCertForRevoke.blockchainTxHash
+            });
+
+            if (!fileHash) {
+                showToast('Certificate file hash not found. This certificate may not be registered on the blockchain.', 'error')
+                setIsRevoking(false)
+                return
+            }
+
+            showToast('Revoking certificate on blockchain...', 'success')
+
+            // Revoke on blockchain
+            const result = await revokeCertificate(fileHash, revocationReason.trim())
+
+            if (!result.success) {
+                showToast(result.error || 'Failed to revoke certificate', 'error')
+                setIsRevoking(false)
+                return
+            }
+
+            showToast('Certificate revoked successfully!', 'success')
+
+            // Update database to mark as revoked
+            const token = localStorage.getItem('token')
+            await axios.post(
+                API_ENDPOINTS.CERTIFICATES.REVOKE(selectedCertForRevoke._id),
+                {
+                    reason: revocationReason.trim(),
+                    txHash: result.txHash,
+                    blockNumber: result.blockNumber
+                },
+                {
+                    headers: { Authorization: `Bearer ${token}` }
+                }
+            )
+
+            // Close modal and refresh
+            setRevokeModalVisible(false)
+            setSelectedCertForRevoke(null)
+            setRevocationReason('')
+            setIsRevoking(false)
+
+            // Refresh certificates list
+            if (student) {
+                fetchUploadedCertificates(student._id)
+            }
+        } catch (error: any) {
+            console.error('Revocation error:', error)
+            showToast(error.message || 'Failed to revoke certificate', 'error')
+            setIsRevoking(false)
+        }
+    }
 
     const fetchUploadedCertificates = async (studentId: string) => {
         setLoadingCertificates(true)
@@ -825,7 +920,26 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
                                                             </Button>
                                                             
                                                             {/* Blockchain Verification Badge */}
-                                                            {cert.blockchainVerified && cert.blockchainTxHash ? (
+                                                            {cert.isRevoked ? (
+                                                                <div className="flex flex-col gap-1">
+                                                                    <div className="flex items-center gap-2 px-2 py-1 bg-red-50 dark:bg-red-900/20 rounded-md border border-red-200 dark:border-red-800">
+                                                                        <Ban className="h-4 w-4 text-red-600 dark:text-red-400" />
+                                                                        <span className="text-xs font-medium text-red-700 dark:text-red-300">
+                                                                            Revoked
+                                                                        </span>
+                                                                    </div>
+                                                                    {cert.revocationReason && (
+                                                                        <p className="text-xs text-red-600 dark:text-red-400">
+                                                                            Reason: {cert.revocationReason}
+                                                                        </p>
+                                                                    )}
+                                                                    {cert.revocationTimestamp && (
+                                                                        <p className="text-xs text-neutral-500">
+                                                                            {new Date(cert.revocationTimestamp).toLocaleDateString()}
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                            ) : cert.blockchainVerified && cert.blockchainTxHash ? (
                                                                 <div className="flex flex-col gap-1">
                                                                     <div className="flex items-center gap-2 px-2 py-1 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800">
                                                                         <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -839,6 +953,19 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
                                                                     >
                                                                         View Transaction
                                                                     </button>
+                                                                    {/* Revoke Button */}
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="destructive"
+                                                                        onClick={() => {
+                                                                            setSelectedCertForRevoke(cert)
+                                                                            setRevokeModalVisible(true)
+                                                                        }}
+                                                                        className="mt-1"
+                                                                    >
+                                                                        <Ban className="h-3 w-3 mr-1" />
+                                                                        Revoke
+                                                                    </Button>
                                                                 </div>
                                                             ) : (
                                                                 <div className="flex items-center gap-2 px-2 py-1 bg-yellow-50 dark:bg-yellow-900/20 rounded-md border border-yellow-200 dark:border-yellow-800">
@@ -894,6 +1021,93 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
                 txHash={blockchainTxHash}
                 certificateName={blockchainCertName}
             />
+
+            {/* Revoke Certificate Modal */}
+            <Dialog open={revokeModalVisible} onOpenChange={setRevokeModalVisible}>
+                <DialogContent className="sm:max-w-[500px]">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5 text-red-600" />
+                            Revoke Certificate
+                        </DialogTitle>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-4">
+                        {selectedCertForRevoke && (
+                            <div className="bg-neutral-50 dark:bg-neutral-800 p-3 rounded-md">
+                                <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100">
+                                    {selectedCertForRevoke.certificateName}
+                                </p>
+                                <p className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">
+                                    {selectedCertForRevoke.fileName}
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="space-y-2">
+                            <Label htmlFor="revocation-reason">
+                                Reason for Revocation <span className="text-red-600">*</span>
+                            </Label>
+                            <Textarea
+                                id="revocation-reason"
+                                placeholder="Enter the reason for revoking this certificate..."
+                                value={revocationReason}
+                                onChange={(e) => setRevocationReason(e.target.value)}
+                                rows={4}
+                                disabled={isRevoking}
+                            />
+                            <p className="text-xs text-neutral-500">
+                                This action will mark the certificate as revoked on the blockchain and cannot be undone.
+                            </p>
+                        </div>
+
+                        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-3">
+                            <div className="flex gap-2">
+                                <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                                <div className="text-xs text-yellow-800 dark:text-yellow-200">
+                                    <p className="font-medium mb-1">Warning:</p>
+                                    <ul className="list-disc list-inside space-y-1">
+                                        <li>This action is permanent and cannot be reversed</li>
+                                        <li>The certificate will be marked as invalid on the blockchain</li>
+                                        <li>Anyone verifying this certificate will see it's revoked</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setRevokeModalVisible(false)
+                                setSelectedCertForRevoke(null)
+                                setRevocationReason('')
+                            }}
+                            disabled={isRevoking}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={handleRevokeCertificate}
+                            disabled={isRevoking || !revocationReason.trim()}
+                        >
+                            {isRevoking ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Revoking...
+                                </>
+                            ) : (
+                                <>
+                                    <Ban className="h-4 w-4 mr-2" />
+                                    Confirm Revocation
+                                </>
+                            )}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

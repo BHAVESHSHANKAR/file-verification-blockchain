@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "D:\\clients\\project vahitha\\blockchain\\contracts\\CertificateRegistry.sol": {
-      "lastModificationDate": 1760935660811,
-      "contentHash": "78f9558357f6b70b89c594867f8d0537",
+      "lastModificationDate": 1761027332902,
+      "contentHash": "eecc5dd637d6c9e97ada67642a4b533c",
       "sourceName": "contracts/CertificateRegistry.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -12,6 +12,7 @@
             "enabled": true,
             "runs": 200
           },
+          "viaIR": true,
           "evmVersion": "paris",
           "outputSelection": {
             "*": {

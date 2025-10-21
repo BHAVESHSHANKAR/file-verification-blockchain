@@ -6,7 +6,8 @@ const {
     getStudentCertificates,
     getCertificate,
     verifyCertificate,
-    saveBlockchainData
+    saveBlockchainData,
+    revokeCertificateEndpoint
 } = require('../controllers/certificateController');
 const { protect } = require('../middleware/auth');
 
@@ -30,6 +31,7 @@ const upload = multer({
 // Protected routes (require authentication)
 router.post('/upload/:studentId', protect, upload.single('certificate'), uploadCertificate);
 router.post('/save-blockchain', protect, saveBlockchainData);
+router.post('/:certificateId/revoke', protect, revokeCertificateEndpoint);
 router.get('/student/:studentId', protect, getStudentCertificates);
 router.get('/:studentId/:certificateId', protect, getCertificate);
 

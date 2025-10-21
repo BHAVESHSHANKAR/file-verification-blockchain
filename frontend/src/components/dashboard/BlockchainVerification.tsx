@@ -11,6 +11,7 @@ interface CertificateData {
     registrationNumber: string
     fileName: string
     ipfsUrl: string
+    ipfsCID?: string
     fileHash: string
     universityAddress: string
     timestamp: string
@@ -98,7 +99,17 @@ export default function BlockchainVerification() {
             const decodedData = iface.parseTransaction({ data: tx.data })
 
             if (decodedData?.name === 'registerCertificate') {
-                const [studentName, registrationNumber, fileName, ipfsUrl, fileHash] = decodedData.args
+                // ✅ NEW: Now we have 6 parameters (added ipfsHash)
+                const [studentName, registrationNumber, fileName, ipfsUrl, ipfsHash, fileHash] = decodedData.args
+
+                console.log('🔍 Decoded transaction data:', {
+                    studentName,
+                    registrationNumber,
+                    fileName,
+                    ipfsUrl: ipfsUrl.substring(0, 50) + '...',
+                    ipfsHash,
+                    fileHash: fileHash.substring(0, 20) + '...'
+                })
 
                 // Verify the certificate still exists on blockchain
                 const exists = await contract.certificateExists(fileHash)
@@ -109,6 +120,7 @@ export default function BlockchainVerification() {
                         registrationNumber,
                         fileName,
                         ipfsUrl,
+                        ipfsCID: ipfsHash, // ✅ Now we have the IPFS hash
                         fileHash,
                         universityAddress: tx.from,
                         timestamp: new Date(Number(block?.timestamp || 0) * 1000).toISOString(),
@@ -253,8 +265,14 @@ export default function BlockchainVerification() {
                                         />
                                         <DetailField
                                             icon={<FileText className="h-4 w-4" />}
-                                            label="File Hash"
-                                            value={verificationResult.certificate.fileHash}
+                                            label="IPFS CID"
+                                            value={verificationResult.certificate.ipfsCID || 'N/A'}
+                                            mono
+                                        />
+                                        <DetailField
+                                            icon={<FileText className="h-4 w-4" />}
+                                            label="File Hash (SHA-512)"
+                                            value={verificationResult.certificate.fileHash || 'N/A'}
                                             mono
                                         />
                                     </div>

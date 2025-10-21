@@ -16,15 +16,16 @@ exports.addStudent = async (req, res) => {
             });
         }
 
-        // Check if registration number already exists
+        // Check if registration number already exists in THIS university
         const existingStudent = await Student.findOne({ 
-            registrationNumber: registrationNumber.toUpperCase() 
+            registrationNumber: registrationNumber.toUpperCase(),
+            university: req.university.id
         });
 
         if (existingStudent) {
             return res.status(400).json({
                 success: false,
-                message: 'Registration number already exists'
+                message: 'Registration number already exists in your university'
             });
         }
 

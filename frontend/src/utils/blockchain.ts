@@ -1,5 +1,6 @@
 import { ethers } from 'ethers';
 import contractABI from '../CertificateRegistry.json';
+import { txQueue } from './blockchainQueue';
 
 // ✅ Contract address from environment
 const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS;
@@ -57,9 +58,9 @@ export const connectToContract = async () => {
 
 //         const tempProvider = new ethers.BrowserProvider(window.ethereum);
 //         const network = await tempProvider.getNetwork();
-        
+
 //         console.log('🌐 Current network:', network.chainId.toString());
-        
+
 //         if (network.chainId !== 80002n) {
 //             console.log('⚠️ Wrong network detected. Switching to Polygon Amoy...');
 //             try {
@@ -82,7 +83,7 @@ export const connectToContract = async () => {
 //         // First check if certificate already exists
 //         console.log('🔍 Checking if certificate exists on blockchain...');
 //         const exists = await contract.certificateExists(fileHash);
-        
+
 //         if (exists) {
 //             console.error('❌ Certificate already exists on blockchain');
 //             return { 
@@ -97,16 +98,16 @@ export const connectToContract = async () => {
 //         if (!window.ethereum) {
 //             throw new Error('MetaMask not available');
 //         }
-        
+
 //         const provider = new ethers.BrowserProvider(window.ethereum);
 //         const signer = await provider.getSigner();
 //         const userAddress = await signer.getAddress();
-        
+
 //         const pendingNonce = await provider.getTransactionCount(userAddress, 'pending');
 //         const confirmedNonce = await provider.getTransactionCount(userAddress, 'latest');
-        
+
 //         console.log(`🔢 Nonce check - Pending: ${pendingNonce}, Confirmed: ${confirmedNonce}`);
-        
+
 //         if (pendingNonce > confirmedNonce) {
 //             const pendingCount = pendingNonce - confirmedNonce;
 //             console.error(`⚠️ You have ${pendingCount} pending transaction(s)`);
@@ -115,7 +116,7 @@ export const connectToContract = async () => {
 //                 error: `You have ${pendingCount} pending transaction(s). Please wait for them to confirm or cancel them in MetaMask before uploading a new certificate.`
 //             };
 //         }
-        
+
 //         console.log('✅ No pending transactions detected');
 
 //         // Estimate gas to catch errors early
@@ -130,7 +131,7 @@ export const connectToContract = async () => {
 //             console.log('⛽ Gas estimate:', gasEstimate.toString());
 //         } catch (estimateError: any) {
 //             console.error('❌ Gas estimation failed:', estimateError);
-            
+
 //             // Parse error message
 //             let errorMessage = 'Transaction would fail: ';
 //             if (estimateError.message?.includes('already registered')) {
@@ -140,7 +141,7 @@ export const connectToContract = async () => {
 //             } else {
 //                 errorMessage += estimateError.message || 'Unknown error';
 //             }
-            
+
 //             return { success: false, error: errorMessage };
 //         }
 
@@ -159,10 +160,10 @@ export const connectToContract = async () => {
 
 //         console.log('⏳ Waiting for transaction confirmation...');
 //         console.log('Transaction hash:', tx.hash);
-        
+
 //         // Wait for confirmation
 //         const receipt = await tx.wait();
-        
+
 //         console.log('✅ Transaction confirmed:', receipt.hash);
 
 //         return { 
@@ -172,10 +173,10 @@ export const connectToContract = async () => {
 //         };
 //     } catch (err: any) {
 //         console.error("❌ Blockchain error:", err);
-        
+
 //         // Better error messages
 //         let errorMessage = err.message || 'Blockchain transaction failed';
-        
+
 //         // User rejected transaction
 //         if (err.code === 'ACTION_REJECTED' || err.code === 4001) {
 //             errorMessage = 'Transaction was cancelled by user. Please approve the transaction in MetaMask.';
@@ -206,7 +207,7 @@ export const connectToContract = async () => {
 //         else if (errorMessage.includes('network')) {
 //             errorMessage = 'Network error. Please check your connection and try again.';
 //         }
-        
+
 //         return { success: false, error: errorMessage };
 //     }
 // };
@@ -218,6 +219,7 @@ export const registerCertificateOnBlockchain = async (certData: {
     registrationNumber: string;
     fileName: string;
     ipfsUrl: string;
+    ipfsHash: string;
     fileHash: string;
 }, maxRetries: number = 3) => {
     try {
@@ -249,16 +251,16 @@ export const registerCertificateOnBlockchain = async (certData: {
         const signer = await provider.getSigner();
         const userAddress = await signer.getAddress();
 
-        const { studentName, registrationNumber, fileName, ipfsUrl, fileHash } = certData;
+        const { studentName, registrationNumber, fileName, ipfsUrl, ipfsHash, fileHash } = certData;
 
         // Check if certificate exists
         console.log('🔍 Checking if certificate exists on blockchain...');
         const exists = await contract.certificateExists(fileHash);
         if (exists) {
             console.error('❌ Certificate already exists on blockchain');
-            return { 
-                success: false, 
-                error: 'This certificate is already registered on the blockchain.' 
+            return {
+                success: false,
+                error: 'This certificate is already registered on the blockchain.'
             };
         }
         console.log('✅ Certificate not found, proceeding with registration...');
@@ -290,6 +292,7 @@ export const registerCertificateOnBlockchain = async (certData: {
                         registrationNumber,
                         fileName,
                         ipfsUrl,
+                        ipfsHash,
                         fileHash,
                         { nonce }
                     );
@@ -303,22 +306,32 @@ export const registerCertificateOnBlockchain = async (certData: {
                 // const feeData = await provider.getFeeData();
                 // const gasPrice = feeData.gasPrice ? feeData.gasPrice * 12n / 10n : undefined; // 20% buffer
                 // Get legacy gas price via raw JSON-RPC call
-let gasPrice;
-try {
-    const rawGasPrice = await provider.send('eth_gasPrice', []);
-    gasPrice = BigInt(rawGasPrice) * 12n / 10n; // 20% buffer
-    console.log('⛽ Legacy gas price:', gasPrice.toString());
-} catch (gasError: any) {
-    console.error('❌ Failed to fetch gas price:', gasError);
-    return { success: false, error: 'Failed to fetch gas price. Please try again.' };
-}
+                let gasPrice;
+                try {
+                    const rawGasPrice = await provider.send('eth_gasPrice', []);
+                    gasPrice = BigInt(rawGasPrice) * 12n / 10n; // 20% buffer
+                    console.log('⛽ Legacy gas price:', gasPrice.toString());
+                } catch (gasError: any) {
+                    console.error('❌ Failed to fetch gas price:', gasError);
+                    return { success: false, error: 'Failed to fetch gas price. Please try again.' };
+                }
                 // Send transaction
-                console.log('📝 Sending transaction to blockchain...', { nonce, gasPrice: gasPrice?.toString() });
+                console.log('📝 Sending transaction to blockchain...', {
+                    nonce,
+                    gasPrice: gasPrice?.toString(),
+                    studentName,
+                    registrationNumber,
+                    fileName,
+                    ipfsUrl: ipfsUrl.substring(0, 50) + '...',
+                    ipfsHash,
+                    fileHash: fileHash.substring(0, 20) + '...'
+                });
                 const tx = await contract.registerCertificate(
                     studentName,
                     registrationNumber,
                     fileName,
                     ipfsUrl,
+                    ipfsHash,
                     fileHash,
                     {
                         gasLimit: gasEstimate * 12n / 10n, // 20% buffer
@@ -331,10 +344,10 @@ try {
                 const receipt = await tx.wait();
 
                 console.log('✅ Transaction confirmed:', receipt.hash);
-                return { 
-                    success: true, 
+                return {
+                    success: true,
                     txHash: receipt.hash,
-                    blockNumber: receipt.blockNumber 
+                    blockNumber: receipt.blockNumber
                 };
             } catch (txError: any) {
                 attempt++;
@@ -374,7 +387,7 @@ try {
     } catch (err: any) {
         console.error('❌ Blockchain error:', err);
         let errorMessage = err.message || 'Blockchain transaction failed';
-        
+
         if (err.code === 'ACTION_REJECTED' || err.code === 4001) {
             errorMessage = 'Transaction was cancelled by user.';
         } else if (err.message?.toLowerCase().includes('insufficient funds')) {
@@ -394,7 +407,20 @@ try {
  */
 export async function verifyCertificateOnBlockchain(fileHash: string) {
     try {
-        const contract = await connectToContract();
+        // Try to use MetaMask if available, otherwise use read-only provider
+        let contract;
+        try {
+            contract = await connectToContract();
+        } catch (connectError) {
+            console.log('⚠️ MetaMask not available, using read-only provider');
+            // Use read-only provider for companies without MetaMask
+            const provider = new ethers.JsonRpcProvider(
+                'https://rpc-amoy.polygon.technology',
+                { chainId: 80002, name: 'polygon-amoy' },
+                { staticNetwork: true }
+            );
+            contract = new ethers.Contract(CONTRACT_ADDRESS, CERTIFICATE_ABI, provider);
+        }
 
         // Check if certificate exists
         const exists = await contract.certificateExists(fileHash);
@@ -410,6 +436,23 @@ export async function verifyCertificateOnBlockchain(fileHash: string) {
         // Get certificate details
         const cert = await contract.getCertificate(fileHash);
 
+        console.log('🔍 RAW cert object from contract:', cert);
+        console.log('🔍 cert.ipfsCID:', cert.ipfsCID);
+        console.log('🔍 cert.fileHash:', cert.fileHash);
+        console.log('🔍 cert[4]:', cert[4]);
+        console.log('🔍 cert[5]:', cert[5]);
+
+        // ⚠️ SWAP: Contract returns them in opposite order
+        // cert[4] or cert.ipfsCID contains the SHA-512 fileHash
+        // cert[5] or cert.fileHash contains the IPFS CID
+        let displayIpfsCID = cert.fileHash || cert[5] || '';
+        let displayFileHash = cert.ipfsCID || cert[4] || '';
+
+        console.log('📊 Final values (after swap):', {
+            displayIpfsCID,
+            displayFileHash: displayFileHash?.substring(0, 20) + '...'
+        });
+
         return {
             success: true,
             exists: true,
@@ -418,7 +461,8 @@ export async function verifyCertificateOnBlockchain(fileHash: string) {
                 registrationNumber: cert.registrationNumber,
                 fileName: cert.fileName,
                 ipfsUrl: cert.ipfsUrl,
-                fileHash: cert.fileHash,
+                ipfsCID: displayIpfsCID,
+                fileHash: displayFileHash,
                 universityAddress: cert.universityAddress,
                 timestamp: new Date(Number(cert.timestamp) * 1000).toISOString()
             }
@@ -482,6 +526,229 @@ export async function switchToPolygonAmoy() {
         } else {
             throw switchError;
         }
+    }
+}
+
+/**
+ * 🚫 Revoke a certificate
+ * @param fileHash SHA-512 hash of the certificate to revoke
+ * @param reason Reason for revocation
+ */
+export async function revokeCertificate(fileHash: string, reason: string) {
+    return txQueue.add(async () => {
+        try {
+            const contract = await connectToContract();
+            const provider = new ethers.BrowserProvider(window.ethereum!);
+            const signer = await provider.getSigner();
+            const userAddress = await signer.getAddress();
+
+            // Check if certificate exists on blockchain
+            console.log('🔍 Checking if certificate exists on blockchain...');
+            const exists = await contract.certificateExists(fileHash);
+
+            if (!exists) {
+                console.error('❌ Certificate not found on blockchain');
+                return {
+                    success: false,
+                    error: 'This certificate is not registered on the blockchain. Only blockchain-verified certificates can be revoked.'
+                };
+            }
+
+            // Check if already revoked
+            console.log('🔍 Checking revocation status...');
+            const status = await contract.getRevocationStatus(fileHash);
+
+            if (status[0]) { // isRevoked
+                console.error('❌ Certificate already revoked');
+                return {
+                    success: false,
+                    error: 'This certificate has already been revoked.'
+                };
+            }
+
+            // Get current nonce
+            const nonce = await provider.getTransactionCount(userAddress, 'latest');
+            console.log(`🚫 Revoking certificate with nonce: ${nonce}`);
+
+            // Estimate gas first
+            let gasEstimate;
+            try {
+                gasEstimate = await contract.revokeCertificate.estimateGas(fileHash, reason, { nonce });
+                console.log('⛽ Gas estimate:', gasEstimate.toString());
+            } catch (estimateError: any) {
+                console.error('❌ Gas estimation failed:', estimateError);
+
+                // Parse error
+                const errorStr = JSON.stringify(estimateError).toLowerCase();
+                if (errorStr.includes('only issuing university')) {
+                    return {
+                        success: false,
+                        error: 'Only the issuing university can revoke this certificate.'
+                    };
+                }
+
+                return {
+                    success: false,
+                    error: 'Transaction would fail: ' + (estimateError.message || 'Unknown error')
+                };
+            }
+
+            // Send revoke transaction
+            const tx = await contract.revokeCertificate(fileHash, reason, {
+                gasLimit: gasEstimate * 12n / 10n, // 20% buffer
+                nonce
+            });
+
+            console.log('⏳ Waiting for revocation confirmation...', { txHash: tx.hash });
+            const receipt = await tx.wait();
+
+            console.log('✅ Certificate revoked:', receipt.hash);
+            return {
+                success: true,
+                txHash: receipt.hash,
+                blockNumber: receipt.blockNumber
+            };
+        } catch (error: any) {
+            console.error('❌ Revocation error:', error);
+
+            // Parse error messages
+            const errorStr = JSON.stringify(error).toLowerCase();
+            const messageStr = (error.message || '').toLowerCase();
+
+            let errorMessage = 'Failed to revoke certificate';
+
+            if (error.code === 'ACTION_REJECTED' || error.code === 4001) {
+                errorMessage = 'Transaction was cancelled by user.';
+            } else if (errorStr.includes('only issuing university') || messageStr.includes('only issuing university')) {
+                errorMessage = 'Only the issuing university can revoke this certificate.';
+            } else if (errorStr.includes('already revoked') || messageStr.includes('already revoked')) {
+                errorMessage = 'This certificate has already been revoked.';
+            } else if (errorStr.includes('does not exist') || messageStr.includes('does not exist')) {
+                errorMessage = 'Certificate not found on blockchain.';
+            } else if (messageStr.includes('insufficient funds')) {
+                errorMessage = 'Insufficient MATIC balance for gas fees.';
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+
+            return {
+                success: false,
+                error: errorMessage
+            };
+        }
+    }, fileHash);
+}
+
+/**
+ * 🔄 Replace a certificate (revoke old and register new)
+ * @param oldFileHash SHA-512 hash of the certificate to revoke
+ * @param reason Reason for replacement
+ * @param newCertData New certificate data
+ */
+export async function replaceCertificate(
+    oldFileHash: string,
+    reason: string,
+    newCertData: {
+        studentName: string;
+        registrationNumber: string;
+        fileName: string;
+        ipfsUrl: string;
+        ipfsHash: string;
+        fileHash: string;
+    }
+) {
+    return txQueue.add(async () => {
+        try {
+            const contract = await connectToContract();
+            const provider = new ethers.BrowserProvider(window.ethereum!);
+            const signer = await provider.getSigner();
+            const userAddress = await signer.getAddress();
+
+            // Get current nonce
+            const nonce = await provider.getTransactionCount(userAddress, 'latest');
+            console.log(`🔄 Replacing certificate with nonce: ${nonce}`);
+
+            // Send replace transaction
+            const tx = await contract.replaceCertificate(
+                oldFileHash,
+                reason,
+                newCertData.studentName,
+                newCertData.registrationNumber,
+                newCertData.fileName,
+                newCertData.ipfsUrl,
+                newCertData.ipfsHash,
+                newCertData.fileHash,
+                {
+                    gasLimit: 900000, // Higher gas for replace operation
+                    nonce
+                }
+            );
+
+            console.log('⏳ Waiting for replacement confirmation...', { txHash: tx.hash });
+            const receipt = await tx.wait();
+
+            console.log('✅ Certificate replaced:', receipt.hash);
+            return {
+                success: true,
+                txHash: receipt.hash,
+                blockNumber: receipt.blockNumber,
+                newFileHash: newCertData.fileHash
+            };
+        } catch (error: any) {
+            console.error('❌ Replacement error:', error);
+            return {
+                success: false,
+                error: error.message || 'Failed to replace certificate'
+            };
+        }
+    }, oldFileHash);
+}
+
+/**
+ * 🔍 Get revocation status of a certificate
+ * @param fileHash SHA-512 hash of the certificate
+ */
+export async function getRevocationStatus(fileHash: string) {
+    try {
+        // Use read-only provider (no MetaMask required)
+        const provider = new ethers.JsonRpcProvider(
+            'https://rpc-amoy.polygon.technology',
+            { chainId: 80002, name: 'polygon-amoy' },
+            { staticNetwork: true }
+        );
+
+        const contract = new ethers.Contract(CONTRACT_ADDRESS, CERTIFICATE_ABI, provider);
+        const status = await contract.getRevocationStatus(fileHash);
+
+        return {
+            success: true,
+            isRevoked: status[0],
+            reason: status[1],
+            revocationTimestamp: Number(status[2]),
+            replacementHash: status[3]
+        };
+    } catch (error: any) {
+        console.error('Error getting revocation status:', error);
+        return {
+            success: false,
+            isRevoked: false,
+            error: error.message
+        };
+    }
+}
+
+/**
+ * ✅ Check if certificate is valid (exists and not revoked)
+ * @param fileHash SHA-512 hash of the certificate
+ */
+export async function isValidCertificate(fileHash: string) {
+    try {
+        const contract = await connectToContract();
+        const isValid = await contract.isValidCertificate(fileHash);
+        return { success: true, isValid };
+    } catch (error: any) {
+        console.error('Error checking certificate validity:', error);
+        return { success: false, error: error.message };
     }
 }
 

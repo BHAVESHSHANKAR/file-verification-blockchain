@@ -3,7 +3,6 @@ import { IconFileCheck, IconChevronLeft, IconChevronRight, IconCheck, IconX, Ico
 import { FileUpload } from '@/components/ui/file-upload'
 import { generateFileHash } from '@/utils/hashUtils'
 import { API_ENDPOINTS } from '@/config/api'
-import { verifyCertificateOnBlockchain } from '@/utils/blockchain'
 import axios from 'axios'
 
 interface CompanyVerifySectionProps {
@@ -25,9 +24,24 @@ export default function CompanyVerifySection({ selectedStudent, onBack, onStuden
     const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null)
     const [uploadKey, setUploadKey] = useState(0) // Key to force FileUpload remount
     const [markingVerified, setMarkingVerified] = useState(false)
+    const [filterBlockchain, setFilterBlockchain] = useState<'all' | 'blockchain' | 'non-blockchain'>('all')
     const certificatesPerPage = 2
 
-    const certificates = selectedStudent?.certificates || []
+    // Filter and sort certificates
+    let filteredCertificates = selectedStudent?.certificates || []
+    
+    // Apply blockchain filter
+    if (filterBlockchain === 'blockchain') {
+        filteredCertificates = filteredCertificates.filter((cert: any) => cert.blockchainVerified)
+    } else if (filterBlockchain === 'non-blockchain') {
+        filteredCertificates = filteredCertificates.filter((cert: any) => !cert.blockchainVerified)
+    }
+    
+    // Sort by most recent first
+    const certificates = filteredCertificates.sort((a: any, b: any) => 
+        new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime()
+    )
+    
     const totalPages = Math.ceil(certificates.length / certificatesPerPage)
     const startIndex = (currentPage - 1) * certificatesPerPage
     const endIndex = startIndex + certificatesPerPage
@@ -99,22 +113,7 @@ export default function CompanyVerifySection({ selectedStudent, onBack, onStuden
             const fileHash = await generateFileHash(file)
             console.log('🔑 Generated hash:', fileHash)
 
-            // Step 1: Verify on blockchain first
-            console.log('🔍 Checking blockchain...')
-            const blockchainResult = await verifyCertificateOnBlockchain(fileHash)
-            
-            if (!blockchainResult.exists) {
-                // Certificate not found on blockchain
-                setVerificationResult({
-                    matched: false,
-                    message: '❌ This certificate is NOT registered on the blockchain. It may be fake or not yet registered.'
-                })
-                return
-            }
-
-            console.log('✅ Certificate found on blockchain:', blockchainResult.certificate)
-
-            // Step 2: Verify in database (for student match)
+            // Check database for hash match
             const token = localStorage.getItem('companyToken')
             const response = await axios.post(
                 API_ENDPOINTS.COMPANY.VERIFY_CERTIFICATE,
@@ -129,28 +128,34 @@ export default function CompanyVerifySection({ selectedStudent, onBack, onStuden
                 }
             )
 
-            if (response.data.success) {
-                if (response.data.matched) {
-                    // Certificate matches both blockchain and student
+            if (response.data.success && response.data.matched) {
+                // Certificate matches - check if it's revoked in database
+                if (response.data.data.isRevoked) {
                     setVerificationResult({
-                        matched: true,
-                        message: '✅ Certificate verified! This certificate is registered on the blockchain and matches the student records.',
+                        matched: false,
+                        message: `❌ This certificate has been REVOKED. Reason: ${response.data.data.revocationReason || 'Not specified'}. Revoked certificates cannot be used for verification.`,
                         data: {
                             ...response.data.data,
-                            blockchainVerified: true,
-                            blockchainData: blockchainResult.certificate
+                            isRevoked: true
                         }
                     })
                 } else {
-                    // Certificate exists on blockchain but doesn't match this student
-                    const certData = blockchainResult.certificate
+                    // Certificate is valid
                     setVerificationResult({
-                        matched: false,
-                        message: certData 
-                            ? `⚠️ This certificate is registered on blockchain but belongs to a different student: ${certData.studentName} (${certData.registrationNumber})`
-                            : '⚠️ This certificate does not match the student records.'
+                        matched: true,
+                        message: '✅ Certificate verified! This certificate matches the student records and is valid.',
+                        data: {
+                            ...response.data.data,
+                            isRevoked: false
+                        }
                     })
                 }
+            } else {
+                // Certificate doesn't match
+                setVerificationResult({
+                    matched: false,
+                    message: response.data.message || '❌ This certificate does not match the student records.'
+                })
             }
         } catch (error: any) {
             console.error('Verification error:', error)
@@ -257,21 +262,28 @@ export default function CompanyVerifySection({ selectedStudent, onBack, onStuden
                             Total Certificates
                         </label>
                         <p className="text-sm text-neutral-900 mt-1">
-                            {certificates.length}
+                            {selectedStudent?.certificates?.length || 0}
                         </p>
                     </div>
                 </div>
 
                 {/* Mark as Verified Button */}
                 <div className="mt-6 pt-6 border-t border-neutral-200">
-                    <button
-                        onClick={handleMarkVerified}
-                        disabled={markingVerified}
-                        className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-2.5 px-4 rounded-lg font-medium transition-colors"
-                    >
-                        <IconCheck className="h-5 w-5" />
-                        {markingVerified ? 'Marking...' : 'Mark as Verified'}
-                    </button>
+                    {selectedStudent.isVerifiedByCompany ? (
+                        <div className="w-full flex items-center justify-center gap-2 bg-green-100 text-green-800 py-2.5 px-4 rounded-lg font-medium border border-green-300">
+                            <IconCheck className="h-5 w-5" />
+                            Already Verified
+                        </div>
+                    ) : (
+                        <button
+                            onClick={handleMarkVerified}
+                            disabled={markingVerified}
+                            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-2.5 px-4 rounded-lg font-medium transition-colors"
+                        >
+                            <IconCheck className="h-5 w-5" />
+                            {markingVerified ? 'Marking...' : 'Mark as Verified'}
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -339,6 +351,20 @@ export default function CompanyVerifySection({ selectedStudent, onBack, onStuden
                                         </div>
                                     )}
 
+                                    {/* Show revocation details if certificate is revoked */}
+                                    {verificationResult.data?.isRevoked && (
+                                        <div className="mt-3 bg-red-100 rounded-lg p-3 border border-red-300">
+                                            <p className="text-xs font-semibold text-red-900 mb-2 flex items-center gap-1">
+                                                <IconX className="h-4 w-4" />
+                                                Certificate Revoked
+                                            </p>
+                                            <div className="space-y-1 text-xs text-red-800">
+                                                <p><span className="font-medium">Reason:</span> {verificationResult.data.revocationReason || 'Not specified'}</p>
+                                                <p><span className="font-medium">Revoked On:</span> {new Date(verificationResult.data.revocationTimestamp * 1000).toLocaleDateString()}</p>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <button
                                         onClick={resetUpload}
                                         className="mt-3 text-sm underline hover:no-underline"
@@ -353,9 +379,55 @@ export default function CompanyVerifySection({ selectedStudent, onBack, onStuden
 
                 {/* Certificates List */}
                 <div>
-                    <h3 className="text-lg font-semibold text-neutral-900 mb-4">
-                        Uploaded Certificates by College ({certificates.length})
-                    </h3>
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-neutral-900">
+                            Uploaded Certificates by College ({certificates.length})
+                        </h3>
+                        
+                        {/* Filter Buttons */}
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => {
+                                    setFilterBlockchain('all')
+                                    setCurrentPage(1)
+                                }}
+                                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                                    filterBlockchain === 'all'
+                                        ? 'bg-neutral-900 text-white'
+                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                                }`}
+                            >
+                                All
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setFilterBlockchain('blockchain')
+                                    setCurrentPage(1)
+                                }}
+                                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
+                                    filterBlockchain === 'blockchain'
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                }`}
+                            >
+                                <IconCheck className="h-3 w-3" />
+                                Blockchain
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setFilterBlockchain('non-blockchain')
+                                    setCurrentPage(1)
+                                }}
+                                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                                    filterBlockchain === 'non-blockchain'
+                                        ? 'bg-neutral-900 text-white'
+                                        : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
+                                }`}
+                            >
+                                Non-Blockchain
+                            </button>
+                        </div>
+                    </div>
 
                     {certificates.length > 0 ? (
                         <>
@@ -363,26 +435,64 @@ export default function CompanyVerifySection({ selectedStudent, onBack, onStuden
                                 {currentCertificates.map((cert: any, index: number) => (
                                     <div
                                         key={startIndex + index}
-                                        className="bg-white rounded-lg border border-neutral-200 p-4 hover:shadow-md transition-shadow"
+                                        className={`bg-white rounded-lg border p-4 hover:shadow-md transition-shadow ${
+                                            cert.isRevoked ? 'border-red-300 bg-red-50' : 'border-neutral-200'
+                                        }`}
                                     >
                                         <div className="flex items-start gap-3">
-                                            <IconFileCheck className="h-8 w-8 text-neutral-600 shrink-0" />
+                                            <IconFileCheck className={`h-8 w-8 shrink-0 ${
+                                                cert.isRevoked ? 'text-red-600' : 'text-neutral-600'
+                                            }`} />
                                             <div className="flex-1 min-w-0">
-                                                <h4 className="font-semibold text-neutral-900 mb-2">
-                                                    {cert.certificateName}
-                                                </h4>
+                                                <div className="flex items-start justify-between gap-2 mb-2">
+                                                    <h4 className="font-semibold text-neutral-900">
+                                                        {cert.certificateName}
+                                                    </h4>
+                                                    <div className="flex items-center gap-1 shrink-0">
+                                                        {/* Blockchain Verified Badge - Green */}
+                                                        {cert.blockchainVerified && !cert.isRevoked && (
+                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-600 text-white text-xs font-medium rounded">
+                                                                <IconCheck className="h-3 w-3" />
+                                                                Blockchain Verified
+                                                            </span>
+                                                        )}
+                                                        {/* Revoked Badge */}
+                                                        {cert.isRevoked && (
+                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-600 text-white text-xs font-medium rounded">
+                                                                <IconX className="h-3 w-3" />
+                                                                REVOKED
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
                                                 <p className="text-xs text-neutral-600 mb-1">
                                                     File: {cert.fileName}
                                                 </p>
                                                 <p className="text-xs text-neutral-600 mb-1">
                                                     Size: {(cert.fileSize / 1024).toFixed(2)} KB
                                                 </p>
-                                                <p className="text-xs text-neutral-600 mb-3">
+                                                <p className="text-xs text-neutral-600 mb-1">
                                                     Issued: {new Date(cert.issuedAt).toLocaleDateString()}
                                                 </p>
-                                                <button className="text-xs bg-neutral-900 hover:bg-neutral-800 text-white px-3 py-1.5 rounded">
-                                                    View Certificate
-                                                </button>
+                                                {cert.isRevoked && (
+                                                    <div className="mt-2 p-2 bg-red-100 border border-red-200 rounded">
+                                                        <p className="text-xs font-semibold text-red-900 mb-1">
+                                                            Revocation Details:
+                                                        </p>
+                                                        <p className="text-xs text-red-800 mb-1">
+                                                            <span className="font-medium">Reason:</span> {cert.revocationReason || 'Not specified'}
+                                                        </p>
+                                                        <p className="text-xs text-red-800">
+                                                            <span className="font-medium">Date:</span> {new Date(cert.revocationTimestamp).toLocaleDateString()}
+                                                        </p>
+                                                    </div>
+                                                )}
+                                                {/* Only show View Certificate button if not revoked */}
+                                                {!cert.isRevoked && (
+                                                    <button className="mt-3 text-xs bg-neutral-900 hover:bg-neutral-800 text-white px-3 py-1.5 rounded">
+                                                        View Certificate
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -391,36 +501,27 @@ export default function CompanyVerifySection({ selectedStudent, onBack, onStuden
 
                             {/* Pagination */}
                             {totalPages > 1 && (
-                                <div className="flex items-center justify-center gap-2">
+                                <div className="flex items-center justify-center gap-3">
                                     <button
                                         onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                                         disabled={currentPage === 1}
-                                        className="p-2 rounded-lg border border-neutral-300 hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-300 hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium text-neutral-700"
                                     >
-                                        <IconChevronLeft className="h-5 w-5 text-neutral-700" />
+                                        <IconChevronLeft className="h-4 w-4" />
+                                        Previous
                                     </button>
 
-                                    <div className="flex items-center gap-2">
-                                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                                            <button
-                                                key={page}
-                                                onClick={() => setCurrentPage(page)}
-                                                className={`px-3 py-1 rounded-lg font-medium transition-colors ${currentPage === page
-                                                    ? 'bg-neutral-900 text-white'
-                                                    : 'border border-neutral-300 hover:bg-neutral-100 text-neutral-700'
-                                                    }`}
-                                            >
-                                                {page}
-                                            </button>
-                                        ))}
-                                    </div>
+                                    <span className="text-sm text-neutral-600">
+                                        Page {currentPage} of {totalPages}
+                                    </span>
 
                                     <button
                                         onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                                         disabled={currentPage === totalPages}
-                                        className="p-2 rounded-lg border border-neutral-300 hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-300 hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium text-neutral-700"
                                     >
-                                        <IconChevronRight className="h-5 w-5 text-neutral-700" />
+                                        Next
+                                        <IconChevronRight className="h-4 w-4" />
                                     </button>
                                 </div>
                             )}

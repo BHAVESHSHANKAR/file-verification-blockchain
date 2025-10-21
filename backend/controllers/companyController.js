@@ -184,9 +184,18 @@ exports.searchStudent = async (req, res) => {
             });
         }
 
+        // Check if this company has already verified this student
+        const company = await Company.findById(req.user.id);
+        const isAlreadyVerified = company.verifiedStudents.some(
+            vs => vs.studentId.toString() === student._id.toString()
+        );
+
         res.json({
             success: true,
-            data: student
+            data: {
+                ...student.toObject(),
+                isVerifiedByCompany: isAlreadyVerified
+            }
         });
     } catch (error) {
         console.error('Search student error:', error);
@@ -234,6 +243,23 @@ exports.verifyCertificateHash = async (req, res) => {
             });
         }
 
+        // ⚠️ Check if certificate is revoked
+        if (matchedCertificate.isRevoked) {
+            return res.json({
+                success: true,
+                matched: false,
+                message: `This certificate has been REVOKED. Reason: ${matchedCertificate.revocationReason || 'Not specified'}. Revoked certificates cannot be used for verification.`,
+                data: {
+                    isRevoked: true,
+                    revocationReason: matchedCertificate.revocationReason,
+                    revocationTimestamp: matchedCertificate.revocationTimestamp,
+                    certificateName: matchedCertificate.certificateName,
+                    studentName: student.name,
+                    registrationNumber: student.registrationNumber
+                }
+            });
+        }
+
         res.json({
             success: true,
             matched: true,
@@ -247,7 +273,8 @@ exports.verifyCertificateHash = async (req, res) => {
                 registrationNumber: student.registrationNumber,
                 university: student.university.name,
                 branch: student.branch,
-                currentYear: student.currentYear
+                currentYear: student.currentYear,
+                isRevoked: false
             }
         });
     } catch (error) {

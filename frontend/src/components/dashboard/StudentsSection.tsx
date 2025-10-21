@@ -400,6 +400,8 @@ export default function StudentsSection({ onNavigateToIssueCert }: StudentsSecti
                                         <option value="2">2nd Year</option>
                                         <option value="3">3rd Year</option>
                                         <option value="4">4th Year</option>
+                                        <option value="5">5th Year</option>
+                                        <option value="Graduated">Graduated</option>
                                     </select>
                                 </div>
 
@@ -638,6 +640,8 @@ export default function StudentsSection({ onNavigateToIssueCert }: StudentsSecti
                                             <option value="2">2nd Year</option>
                                             <option value="3">3rd Year</option>
                                             <option value="4">4th Year</option>
+                                            <option value="5">5th Year</option>
+                                            <option value="Graduated">Graduated</option>
                                         </select>
                                     </div>
 

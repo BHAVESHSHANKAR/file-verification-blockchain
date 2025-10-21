@@ -15,8 +15,10 @@ export const API_ENDPOINTS = {
         SEARCH: (query: string) => `${API_URL}/students/search/${query}`
     },
     CERTIFICATES: {
+        BASE: `${API_URL}/certificates`,
         UPLOAD: (studentId: string) => `${API_URL}/certificates/upload/${studentId}`,
         SAVE_BLOCKCHAIN: `${API_URL}/certificates/save-blockchain`,
+        REVOKE: (certId: string) => `${API_URL}/certificates/${certId}/revoke`,
         GET_STUDENT_CERTS: (studentId: string) => `${API_URL}/certificates/student/${studentId}`,
         GET_ONE: (studentId: string, certId: string) => `${API_URL}/certificates/${studentId}/${certId}`,
         VERIFY: `${API_URL}/certificates/verify`

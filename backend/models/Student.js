@@ -44,26 +44,30 @@ const certificateSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    // Revocation and replacement fields
-    status: {
-        type: String,
-        enum: ['active', 'revoked', 'replaced'],
-        default: 'active'
+    // Revocation fields
+    isRevoked: {
+        type: Boolean,
+        default: false
     },
-    revokedAt: {
+    revocationReason: {
+        type: String,
+        default: null
+    },
+    revocationTimestamp: {
         type: Date,
         default: null
     },
-    revokedReason: {
+    revocationTxHash: {
         type: String,
         default: null
     },
-    replacedBy: {
-        type: mongoose.Schema.Types.ObjectId,
+    revocationBlockNumber: {
+        type: Number,
         default: null
     },
-    replacementFor: {
-        type: mongoose.Schema.Types.ObjectId,
+    // Replacement fields
+    replacementCertificateHash: {
+        type: String,
         default: null
     }
 }, {
@@ -80,7 +84,6 @@ const studentSchema = new mongoose.Schema({
     registrationNumber: {
         type: String,
         required: [true, 'Registration number is required'],
-        unique: true,
         trim: true,
         uppercase: true
     },
@@ -92,7 +95,7 @@ const studentSchema = new mongoose.Schema({
     currentYear: {
         type: String,
         required: [true, 'Current year of study is required'],
-        enum: ['1', '2', '3', '4']
+        enum: ['1', '2', '3', '4', '5', 'Graduated']
     },
     branch: {
         type: String,
@@ -119,7 +122,9 @@ const studentSchema = new mongoose.Schema({
 
 // Indexes for faster queries
 studentSchema.index({ university: 1 });
-studentSchema.index({ registrationNumber: 1 });
 studentSchema.index({ name: 1 });
+
+// Compound unique index: registrationNumber must be unique within each university
+studentSchema.index({ registrationNumber: 1, university: 1 }, { unique: true });
 
 module.exports = mongoose.model('Student', studentSchema);
