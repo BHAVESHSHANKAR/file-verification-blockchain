@@ -16,6 +16,12 @@ interface CertificateData {
     universityAddress: string
     timestamp: string
     exists: boolean
+    revocationStatus?: {
+        isRevoked: boolean
+        reason: string
+        timestamp: number
+        replacementHash: string
+    } | null
 }
 
 interface TransactionData {
@@ -114,6 +120,21 @@ export default function BlockchainVerification() {
                 // Verify the certificate still exists on blockchain
                 const exists = await contract.certificateExists(fileHash)
 
+                // Check revocation status
+                let revocationStatus = null
+                try {
+                    const status = await contract.getRevocationStatus(fileHash)
+                    revocationStatus = {
+                        isRevoked: status[0],
+                        reason: status[1],
+                        timestamp: Number(status[2]),
+                        replacementHash: status[3]
+                    }
+                    console.log('🔍 Revocation status:', revocationStatus)
+                } catch (revError) {
+                    console.warn('Could not fetch revocation status:', revError)
+                }
+
                 setVerificationResult({
                     certificate: {
                         studentName,
@@ -124,7 +145,8 @@ export default function BlockchainVerification() {
                         fileHash,
                         universityAddress: tx.from,
                         timestamp: new Date(Number(block?.timestamp || 0) * 1000).toISOString(),
-                        exists
+                        exists,
+                        revocationStatus
                     },
                     transaction: {
                         hash: receipt.hash,
@@ -276,6 +298,33 @@ export default function BlockchainVerification() {
                                             mono
                                         />
                                     </div>
+
+                                    {/* Revocation Status */}
+                                    {verificationResult.certificate.revocationStatus?.isRevoked && (
+                                        <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border-2 border-red-500 rounded-lg">
+                                            <div className="flex items-start gap-3">
+                                                <XCircle className="h-6 w-6 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                                                <div className="flex-1">
+                                                    <h4 className="font-semibold text-red-900 dark:text-red-100 text-lg mb-2">
+                                                        ⚠️ Certificate Revoked
+                                                    </h4>
+                                                    <div className="space-y-2 text-sm">
+                                                        <p className="text-red-800 dark:text-red-200">
+                                                            <span className="font-medium">Reason:</span> {verificationResult.certificate.revocationStatus.reason || 'Not specified'}
+                                                        </p>
+                                                        <p className="text-red-800 dark:text-red-200">
+                                                            <span className="font-medium">Revoked On:</span> {new Date(verificationResult.certificate.revocationStatus.timestamp * 1000).toLocaleString()}
+                                                        </p>
+                                                        {verificationResult.certificate.revocationStatus.replacementHash && (
+                                                            <p className="text-red-800 dark:text-red-200">
+                                                                <span className="font-medium">Replacement:</span> {verificationResult.certificate.revocationStatus.replacementHash}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
 
                                     <div className="flex gap-3">
                                         <Button
