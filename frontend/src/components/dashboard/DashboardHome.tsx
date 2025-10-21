@@ -4,20 +4,20 @@ import loadingFilesAnimation from '@/assets/animations/Loading Files.json'
 
 export default function DashboardHome() {
     return (
-        <div className="p-4 md:p-10">
+        <div className="p-4 sm:p-6 md:p-10">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-neutral-800 dark:text-neutral-100">
+                <div className="mb-6 sm:mb-8">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-neutral-800 dark:text-neutral-100">
                         How EduVerify Works
                     </h1>
-                    <p className="text-neutral-600 dark:text-neutral-400 mt-2">
+                    <p className="text-sm sm:text-base text-neutral-600 dark:text-neutral-400 mt-2">
                         Secure, transparent, and tamper-proof certificate verification using blockchain technology
                     </p>
                 </div>
 
                 {/* Process Flow */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
                     <ProcessCard
                         step="1"
                         title="Upload Certificate"
@@ -45,7 +45,7 @@ export default function DashboardHome() {
                 </div>
 
                 {/* Lottie Animation */}
-                <div className="bg-white dark:bg-neutral-900 rounded-xl p-8 mb-8 border border-neutral-200 dark:border-neutral-700 flex items-center justify-center">
+                <div className="bg-white dark:bg-neutral-900 rounded-xl p-4 sm:p-6 md:p-8 mb-6 sm:mb-8 border border-neutral-200 dark:border-neutral-700 flex items-center justify-center">
                     <div className="w-full max-w-2xl">
                         <Lottie
                             animationData={loadingFilesAnimation}
@@ -56,7 +56,7 @@ export default function DashboardHome() {
                 </div>
 
                 {/* Key Features */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
                     <FeatureCard
                         icon={<Lock className="h-6 w-6" />}
                         title="Tamper-Proof"
@@ -85,19 +85,19 @@ const ProcessCard = ({ step, title, description, icon }: {
     icon: React.ReactNode
 }) => {
     return (
-        <div className="bg-white dark:bg-neutral-800 rounded-xl p-6 border border-neutral-200 dark:border-neutral-700 hover:shadow-lg transition-shadow">
-            <div className="flex items-start gap-4">
-                <div className="bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 p-3 rounded-lg shrink-0">
+        <div className="bg-white dark:bg-neutral-800 rounded-xl p-4 sm:p-6 border border-neutral-200 dark:border-neutral-700 hover:shadow-lg transition-shadow">
+            <div className="flex items-start gap-3 sm:gap-4">
+                <div className="bg-neutral-900 dark:bg-neutral-100 text-white dark:text-neutral-900 p-2 sm:p-3 rounded-lg shrink-0">
                     {icon}
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
                         <span className="text-xs font-bold text-neutral-500 dark:text-neutral-400">STEP {step}</span>
                     </div>
-                    <h3 className="text-lg font-bold text-neutral-800 dark:text-neutral-100 mb-2">
+                    <h3 className="text-base sm:text-lg font-bold text-neutral-800 dark:text-neutral-100 mb-2">
                         {title}
                     </h3>
-                    <p className="text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
+                    <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 leading-relaxed">
                         {description}
                     </p>
                 </div>
@@ -112,14 +112,14 @@ const FeatureCard = ({ icon, title, description }: {
     description: string
 }) => {
     return (
-        <div className="bg-white dark:bg-neutral-800 rounded-xl p-6 border border-neutral-200 dark:border-neutral-700">
-            <div className="text-neutral-800 dark:text-neutral-200 mb-4">
+        <div className="bg-white dark:bg-neutral-800 rounded-xl p-4 sm:p-6 border border-neutral-200 dark:border-neutral-700">
+            <div className="text-neutral-800 dark:text-neutral-200 mb-3 sm:mb-4">
                 {icon}
             </div>
-            <h3 className="text-lg font-bold text-neutral-800 dark:text-neutral-100 mb-2">
+            <h3 className="text-base sm:text-lg font-bold text-neutral-800 dark:text-neutral-100 mb-2">
                 {title}
             </h3>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400">
                 {description}
             </p>
         </div>

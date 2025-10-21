@@ -25,6 +25,7 @@ export default function CompanyVerifySection({ selectedStudent, onBack, onStuden
     const [uploadKey, setUploadKey] = useState(0) // Key to force FileUpload remount
     const [markingVerified, setMarkingVerified] = useState(false)
     const [filterBlockchain, setFilterBlockchain] = useState<'all' | 'blockchain' | 'non-blockchain'>('all')
+    const [showStudentDetails, setShowStudentDetails] = useState(false) // For mobile dropdown
     const certificatesPerPage = 2
 
     // Filter and sort certificates
@@ -195,9 +196,94 @@ export default function CompanyVerifySection({ selectedStudent, onBack, onStuden
     }
 
     return (
-        <div className="flex h-full bg-white">
-            {/* Left Sidebar - Student Info */}
-            <div className="w-80 bg-neutral-50 border-r border-neutral-200 p-6 overflow-y-auto">
+        <div className="flex flex-col md:flex-row h-full bg-white">
+            {/* Mobile: Collapsible Student Info */}
+            <div className="md:hidden bg-neutral-50 border-b border-neutral-200">
+                <button
+                    onClick={onBack}
+                    className="px-4 pt-4 pb-2 text-xs text-neutral-600 hover:text-neutral-900"
+                >
+                    ← Back to Search
+                </button>
+                
+                <button
+                    onClick={() => setShowStudentDetails(!showStudentDetails)}
+                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-neutral-100 transition-colors"
+                >
+                    <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-full bg-neutral-200 flex items-center justify-center shrink-0">
+                            <span className="text-lg font-bold text-neutral-600">
+                                {selectedStudent.name?.charAt(0)}
+                            </span>
+                        </div>
+                        <div className="text-left">
+                            <h3 className="text-sm font-bold text-neutral-900 truncate max-w-[200px]">
+                                {selectedStudent.name}
+                            </h3>
+                            <p className="text-xs text-neutral-600">
+                                {selectedStudent.registrationNumber}
+                            </p>
+                        </div>
+                    </div>
+                    <svg
+                        className={`h-5 w-5 text-neutral-600 transition-transform ${showStudentDetails ? 'rotate-180' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
+
+                {showStudentDetails && (
+                    <div className="px-4 pb-4 space-y-3 border-t border-neutral-200 pt-3">
+                        <div>
+                            <label className="text-xs font-medium text-neutral-600">University</label>
+                            <p className="text-sm text-neutral-900 mt-1 break-words">
+                                {selectedStudent.universityName || selectedStudent.university?.name || 'N/A'}
+                            </p>
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-neutral-600">Branch/Department</label>
+                            <p className="text-sm text-neutral-900 mt-1">{selectedStudent.branch || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-neutral-600">Current Year</label>
+                            <p className="text-sm text-neutral-900 mt-1">Year {selectedStudent.currentYear || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-neutral-600">Specialization</label>
+                            <p className="text-sm text-neutral-900 mt-1">{selectedStudent.specialization || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <label className="text-xs font-medium text-neutral-600">Total Certificates</label>
+                            <p className="text-sm text-neutral-900 mt-1">{selectedStudent?.certificates?.length || 0}</p>
+                        </div>
+                        
+                        {/* Mark as Verified Button - Mobile */}
+                        <div className="pt-3 border-t border-neutral-200">
+                            {selectedStudent.isVerifiedByCompany ? (
+                                <div className="w-full flex items-center justify-center gap-2 bg-green-100 text-green-800 py-2 px-3 rounded-lg text-sm font-medium border border-green-300">
+                                    <IconCheck className="h-4 w-4" />
+                                    Already Verified
+                                </div>
+                            ) : (
+                                <button
+                                    onClick={handleMarkVerified}
+                                    disabled={markingVerified}
+                                    className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-2 px-3 rounded-lg text-sm font-medium transition-colors"
+                                >
+                                    <IconCheck className="h-4 w-4" />
+                                    {markingVerified ? 'Marking...' : 'Mark as Verified'}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Desktop: Left Sidebar - Student Info */}
+            <div className="hidden md:block w-80 bg-neutral-50 border-r border-neutral-200 p-6 overflow-y-auto">
                 <button
                     onClick={onBack}
                     className="mb-6 text-sm text-neutral-600 hover:text-neutral-900"
@@ -211,7 +297,7 @@ export default function CompanyVerifySection({ selectedStudent, onBack, onStuden
                             {selectedStudent.name?.charAt(0)}
                         </span>
                     </div>
-                    <h3 className="text-lg font-bold text-neutral-900 text-center">
+                    <h3 className="text-lg font-bold text-neutral-900 text-center break-words px-2">
                         {selectedStudent.name}
                     </h3>
                 </div>
@@ -267,7 +353,7 @@ export default function CompanyVerifySection({ selectedStudent, onBack, onStuden
                     </div>
                 </div>
 
-                {/* Mark as Verified Button */}
+                {/* Mark as Verified Button - Desktop */}
                 <div className="mt-6 pt-6 border-t border-neutral-200">
                     {selectedStudent.isVerifiedByCompany ? (
                         <div className="w-full flex items-center justify-center gap-2 bg-green-100 text-green-800 py-2.5 px-4 rounded-lg font-medium border border-green-300">
@@ -288,14 +374,14 @@ export default function CompanyVerifySection({ selectedStudent, onBack, onStuden
             </div>
 
             {/* Right Side - Certificates and Upload */}
-            <div className="flex-1 p-6 overflow-y-auto bg-white">
-                <h2 className="text-2xl font-bold text-neutral-900 mb-6">
+            <div className="flex-1 p-4 sm:p-6 overflow-y-auto bg-white">
+                <h2 className="text-xl sm:text-2xl font-bold text-neutral-900 mb-4 sm:mb-6">
                     Student Certificates
                 </h2>
 
                 {/* Upload Section */}
-                <div className="mb-8 bg-white rounded-xl p-6 border border-neutral-200">
-                    <h3 className="text-lg font-semibold text-neutral-900 mb-4">
+                <div className="mb-6 sm:mb-8 bg-white rounded-xl p-4 sm:p-6 border border-neutral-200">
+                    <h3 className="text-base sm:text-lg font-semibold text-neutral-900 mb-3 sm:mb-4">
                         Upload Certificate to Verify (SHA-512 Hash Verification)
                     </h3>
                     <FileUpload key={uploadKey} onChange={handleFileUpload} />
@@ -379,13 +465,13 @@ export default function CompanyVerifySection({ selectedStudent, onBack, onStuden
 
                 {/* Certificates List */}
                 <div>
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-neutral-900">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0 mb-4">
+                        <h3 className="text-base sm:text-lg font-semibold text-neutral-900">
                             Uploaded Certificates by College ({certificates.length})
                         </h3>
                         
                         {/* Filter Buttons */}
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0">
                             <button
                                 onClick={() => {
                                     setFilterBlockchain('all')
@@ -431,41 +517,41 @@ export default function CompanyVerifySection({ selectedStudent, onBack, onStuden
 
                     {certificates.length > 0 ? (
                         <>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
                                 {currentCertificates.map((cert: any, index: number) => (
                                     <div
                                         key={startIndex + index}
-                                        className={`bg-white rounded-lg border p-4 hover:shadow-md transition-shadow ${
+                                        className={`bg-white rounded-lg border p-3 sm:p-4 hover:shadow-md transition-shadow ${
                                             cert.isRevoked ? 'border-red-300 bg-red-50' : 'border-neutral-200'
                                         }`}
                                     >
-                                        <div className="flex items-start gap-3">
-                                            <IconFileCheck className={`h-8 w-8 shrink-0 ${
+                                        <div className="flex items-start gap-2 sm:gap-3">
+                                            <IconFileCheck className={`h-6 w-6 sm:h-8 sm:w-8 shrink-0 ${
                                                 cert.isRevoked ? 'text-red-600' : 'text-neutral-600'
                                             }`} />
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex items-start justify-between gap-2 mb-2">
-                                                    <h4 className="font-semibold text-neutral-900">
+                                                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
+                                                    <h4 className="text-sm sm:text-base font-semibold text-neutral-900 break-words">
                                                         {cert.certificateName}
                                                     </h4>
-                                                    <div className="flex items-center gap-1 shrink-0">
+                                                    <div className="flex flex-wrap items-center gap-1 shrink-0">
                                                         {/* Blockchain Verified Badge - Green */}
                                                         {cert.blockchainVerified && !cert.isRevoked && (
-                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-600 text-white text-xs font-medium rounded">
+                                                            <span className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 bg-green-600 text-white text-xs font-medium rounded whitespace-nowrap">
                                                                 <IconCheck className="h-3 w-3" />
-                                                                Blockchain Verified
+                                                                <span className="hidden xs:inline">Blockchain</span> Verified
                                                             </span>
                                                         )}
                                                         {/* Revoked Badge */}
                                                         {cert.isRevoked && (
-                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-600 text-white text-xs font-medium rounded">
+                                                            <span className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 bg-red-600 text-white text-xs font-medium rounded">
                                                                 <IconX className="h-3 w-3" />
                                                                 REVOKED
                                                             </span>
                                                         )}
                                                     </div>
                                                 </div>
-                                                <p className="text-xs text-neutral-600 mb-1">
+                                                <p className="text-xs text-neutral-600 mb-1 break-all">
                                                     File: {cert.fileName}
                                                 </p>
                                                 <p className="text-xs text-neutral-600 mb-1">
@@ -489,7 +575,7 @@ export default function CompanyVerifySection({ selectedStudent, onBack, onStuden
                                                 )}
                                                 {/* Only show View Certificate button if not revoked */}
                                                 {!cert.isRevoked && (
-                                                    <button className="mt-3 text-xs bg-neutral-900 hover:bg-neutral-800 text-white px-3 py-1.5 rounded">
+                                                    <button className="mt-2 sm:mt-3 text-xs bg-neutral-900 hover:bg-neutral-800 text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded w-full sm:w-auto">
                                                         View Certificate
                                                     </button>
                                                 )}
@@ -501,27 +587,28 @@ export default function CompanyVerifySection({ selectedStudent, onBack, onStuden
 
                             {/* Pagination */}
                             {totalPages > 1 && (
-                                <div className="flex items-center justify-center gap-3">
+                                <div className="flex items-center justify-center gap-2 sm:gap-3">
                                     <button
                                         onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                                         disabled={currentPage === 1}
-                                        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-300 hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium text-neutral-700"
+                                        className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg border border-neutral-300 hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs sm:text-sm font-medium text-neutral-700"
                                     >
-                                        <IconChevronLeft className="h-4 w-4" />
-                                        Previous
+                                        <IconChevronLeft className="h-3 w-3 sm:h-4 sm:w-4" />
+                                        <span className="hidden xs:inline">Previous</span>
+                                        <span className="xs:hidden">Prev</span>
                                     </button>
 
-                                    <span className="text-sm text-neutral-600">
-                                        Page {currentPage} of {totalPages}
+                                    <span className="text-xs sm:text-sm text-neutral-600">
+                                        {currentPage}/{totalPages}
                                     </span>
 
                                     <button
                                         onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                                         disabled={currentPage === totalPages}
-                                        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-neutral-300 hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium text-neutral-700"
+                                        className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-lg border border-neutral-300 hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs sm:text-sm font-medium text-neutral-700"
                                     >
                                         Next
-                                        <IconChevronRight className="h-4 w-4" />
+                                        <IconChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
                                     </button>
                                 </div>
                             )}

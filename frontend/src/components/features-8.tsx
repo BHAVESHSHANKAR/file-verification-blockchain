@@ -31,17 +31,17 @@ export default function FeaturesSection() {
 
     return (
         <section id="features" ref={sectionRef} className="bg-white py-16 md:py-32 dark:bg-zinc-950">
-            <div className="mx-auto max-w-5xl px-6">
+            <div className="mx-auto max-w-5xl px-6 sm:px-8 lg:px-6">
                 <div className="text-center mb-12">
-                    <h2 className="text-3xl font-bold md:text-4xl">Key Features</h2>
-                    <p className="mt-4 text-muted-foreground max-w-2xl mx-auto">
+                    <h2 className="text-2xl sm:text-3xl font-bold md:text-4xl">Key Features</h2>
+                    <p className="mt-4 text-muted-foreground max-w-2xl mx-auto text-sm sm:text-base">
                         Powerful features that make certificate verification secure, fast, and reliable
                     </p>
                 </div>
                 <div className="relative">
-                    <div className="relative z-10 grid grid-cols-6 gap-3">
-                        <Card className={`relative col-span-full flex overflow-hidden lg:col-span-2 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`} style={{ transitionDelay: '0ms' }}>
-                            <CardContent className="relative m-auto size-fit pt-6">
+                    <div className="relative z-10 grid grid-cols-1 sm:grid-cols-6 gap-4 sm:gap-3">
+                        <Card className={`relative col-span-full sm:col-span-full flex overflow-hidden lg:col-span-2 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`} style={{ transitionDelay: '0ms' }}>
+                            <CardContent className="relative m-auto w-full pt-6 flex flex-col items-center">
                                 <div className="relative flex h-24 w-56 items-center">
                                     <svg
                                         className="text-muted absolute inset-0 size-full"
@@ -59,7 +59,7 @@ export default function FeaturesSection() {
                             </CardContent>
                         </Card>
                         <Card className={`relative col-span-full overflow-hidden sm:col-span-3 lg:col-span-2 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`} style={{ transitionDelay: '100ms' }}>
-                            <CardContent className="pt-6">
+                            <CardContent className="pt-6 flex flex-col items-center">
                                 <div className="relative mx-auto flex aspect-square size-32 rounded-full border before:absolute before:-inset-2 before:rounded-full before:border dark:border-white/10 dark:before:border-white/5">
                                     <svg
                                         className="m-auto h-fit w-24"
@@ -120,7 +120,7 @@ export default function FeaturesSection() {
                             </CardContent>
                         </Card>
                         <Card className={`relative col-span-full overflow-hidden sm:col-span-3 lg:col-span-2 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`} style={{ transitionDelay: '200ms' }}>
-                            <CardContent className="pt-6">
+                            <CardContent className="pt-6 flex flex-col items-center">
                                 <div className="pt-6 lg:px-6">
                                     <svg
                                         className="dark:text-muted-foreground w-full"

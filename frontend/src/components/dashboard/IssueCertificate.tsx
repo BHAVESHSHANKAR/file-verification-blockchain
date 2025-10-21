@@ -672,96 +672,96 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
     }
 
     return (
-        <div className="h-full flex p-6 gap-6">
+        <div className="h-full flex flex-col md:flex-row p-4 sm:p-6 gap-4 sm:gap-6">
             {/* Left Side - Student Details (Black & White) */}
-            <div className="w-80 bg-white dark:bg-neutral-900 border-2 border-black dark:border-white rounded-xl p-6 flex flex-col">
+            <div className="w-full md:w-80 bg-white dark:bg-neutral-900 border-2 border-black dark:border-white rounded-xl p-4 sm:p-6 flex flex-col">
                 {/* Back Button */}
                 {onBack && (
                     <button
                         onClick={handleBack}
-                        className="mb-6 flex items-center gap-2 text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white transition-colors"
+                        className="mb-4 sm:mb-6 flex items-center gap-2 text-neutral-600 dark:text-neutral-400 hover:text-black dark:hover:text-white transition-colors"
                     >
-                        <ArrowLeft className="h-5 w-5" />
-                        <span className="text-sm font-medium">Back</span>
+                        <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+                        <span className="text-xs sm:text-sm font-medium">Back</span>
                     </button>
                 )}
 
                 {/* Student Icon */}
-                <div className="mb-6">
-                    <div className="h-20 w-20 rounded-full border-2 border-black dark:border-white flex items-center justify-center">
-                        <User className="h-10 w-10 text-black dark:text-white" />
+                <div className="mb-4 sm:mb-6">
+                    <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full border-2 border-black dark:border-white flex items-center justify-center">
+                        <User className="h-8 w-8 sm:h-10 sm:w-10 text-black dark:text-white" />
                     </div>
                 </div>
 
                 {/* Student Details */}
-                <div className="space-y-6 flex-1">
+                <div className="space-y-4 sm:space-y-6 flex-1">
                     <div>
                         <p className="text-xs text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-1">Student Name</p>
-                        <p className="text-lg font-semibold text-black dark:text-white">{student.name}</p>
+                        <p className="text-base sm:text-lg font-semibold text-black dark:text-white break-words">{student.name}</p>
                     </div>
 
                     <div>
                         <p className="text-xs text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-1">Registration No.</p>
-                        <p className="text-base font-medium text-black dark:text-white">{student.registrationNumber}</p>
+                        <p className="text-sm sm:text-base font-medium text-black dark:text-white">{student.registrationNumber}</p>
                     </div>
 
                     <div>
                         <p className="text-xs text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-1">Branch</p>
-                        <p className="text-base font-medium text-black dark:text-white">{student.branch}</p>
+                        <p className="text-sm sm:text-base font-medium text-black dark:text-white break-words">{student.branch}</p>
                     </div>
 
                     <div>
                         <p className="text-xs text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-1">Current Year</p>
-                        <p className="text-base font-medium text-black dark:text-white">Year {student.currentYear}</p>
+                        <p className="text-sm sm:text-base font-medium text-black dark:text-white">Year {student.currentYear}</p>
                     </div>
 
                     <div>
                         <p className="text-xs text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-1">Academic Year</p>
-                        <p className="text-base font-medium text-black dark:text-white">{student.academicYear}</p>
+                        <p className="text-sm sm:text-base font-medium text-black dark:text-white">{student.academicYear}</p>
                     </div>
 
                     {student.specialization && (
                         <div>
                             <p className="text-xs text-neutral-600 dark:text-neutral-400 uppercase tracking-wider mb-1">Specialization</p>
-                            <p className="text-base font-medium text-black dark:text-white">{student.specialization}</p>
+                            <p className="text-sm sm:text-base font-medium text-black dark:text-white break-words">{student.specialization}</p>
                         </div>
                     )}
                 </div>
             </div>
 
             {/* Right Side - Certificate Upload Form */}
-            <div className="flex-1 bg-white dark:bg-neutral-900 p-10 overflow-y-auto">
+            <div className="flex-1 bg-white dark:bg-neutral-900 p-4 sm:p-6 md:p-10 overflow-y-auto">
                 <div className="max-w-5xl">
                     {/* Header */}
-                    <div className="mb-8 flex items-center justify-between">
-                        <div>
-                            <div className="flex items-center gap-3 mb-2">
-                                <Award className="h-8 w-8 text-neutral-900 dark:text-neutral-100" />
-                                <h1 className="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
+                    <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                                <Award className="h-6 w-6 sm:h-8 sm:w-8 text-neutral-900 dark:text-neutral-100 shrink-0" />
+                                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-neutral-900 dark:text-neutral-100">
                                     Issue Certificates
                                 </h1>
                             </div>
-                            <p className="text-neutral-600 dark:text-neutral-400">
+                            <p className="text-sm sm:text-base text-neutral-600 dark:text-neutral-400 truncate">
                                 Upload certificates for {student.name}
                             </p>
                         </div>
-                        <Button onClick={addCertificateRow} variant="outline" size="sm">
+                        <Button onClick={addCertificateRow} variant="outline" size="sm" className="w-full sm:w-auto shrink-0">
                             <Upload className="mr-2 h-4 w-4" />
-                            Add Certificate
+                            <span className="text-xs sm:text-sm">Add Certificate</span>
                         </Button>
                     </div>
 
                     {/* Certificate Rows */}
-                    <div className="space-y-4 mb-6">
+                    <div className="space-y-3 sm:space-y-4 mb-6">
                         {certificates.map((cert) => (
                             <div
                                 key={cert.id}
-                                className="border border-neutral-200 dark:border-neutral-700 rounded-lg p-4"
+                                className="border border-neutral-200 dark:border-neutral-700 rounded-lg p-3 sm:p-4"
                             >
-                                <div className="flex gap-4 items-start">
+                                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start">
                                     {/* Left: Certificate Name */}
-                                    <div className="flex-1">
-                                        <Label htmlFor={`cert-name-${cert.id}`} className="text-sm font-medium mb-2 block">
+                                    <div className="flex-1 w-full min-w-0">
+                                        <Label htmlFor={`cert-name-${cert.id}`} className="text-xs sm:text-sm font-medium mb-2 block">
                                             Certificate Name *
                                         </Label>
                                         <Input
@@ -769,17 +769,18 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
                                             type="text"
                                             value={cert.name}
                                             onChange={(e) => updateCertificateName(cert.id, e.target.value)}
-                                            placeholder="e.g., semester 1, main grade sheet"
+                                            placeholder="e.g., semester 1"
                                             disabled={cert.uploaded}
+                                            className="text-sm"
                                         />
                                     </div>
 
                                     {/* Right: File Upload */}
-                                    <div className="flex-1">
-                                        <Label className="text-sm font-medium mb-2 block">
+                                    <div className="flex-1 w-full min-w-0">
+                                        <Label className="text-xs sm:text-sm font-medium mb-2 block">
                                             Certificate File (PDF) *
                                         </Label>
-                                        <div className="flex gap-2">
+                                        <div className="flex flex-col sm:flex-row gap-2">
                                             <div className="flex-1">
                                                 <input
                                                     type="file"

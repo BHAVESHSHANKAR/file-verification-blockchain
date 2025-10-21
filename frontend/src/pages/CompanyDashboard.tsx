@@ -135,6 +135,8 @@ export default function CompanyDashboard() {
                                             handleLogout()
                                         } else {
                                             setActiveSection(link.label)
+                                            // Close sidebar on mobile after clicking
+                                            setOpen(false)
                                         }
                                     }}
                                     className="cursor-pointer"
@@ -144,7 +146,11 @@ export default function CompanyDashboard() {
                             ))}
                         </div>
                     </div>
-                    <div onClick={() => setShowProfile(true)} className="cursor-pointer">
+                    <div onClick={() => {
+                        setShowProfile(true)
+                        // Close sidebar on mobile when opening profile
+                        setOpen(false)
+                    }} className="cursor-pointer">
                         <SidebarLink
                             link={{
                                 label: company?.companyName || 'Company',
@@ -213,62 +219,62 @@ const Logo = () => {
 
 const ProfileModal = ({ company, onClose }: { company: any; onClose: () => void }) => {
     return (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
-            <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-xl max-w-2xl w-full p-6" onClick={(e) => e.stopPropagation()}>
-                <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold text-neutral-800 dark:text-neutral-100">Company Profile</h2>
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 sm:p-6" onClick={onClose}>
+            <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-xl max-w-2xl w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-4 sm:mb-6">
+                    <h2 className="text-xl sm:text-2xl font-bold text-neutral-800 dark:text-neutral-100">Company Profile</h2>
                     <button
                         onClick={onClose}
                         className="text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 cursor-pointer">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
 
-                <div className="space-y-6">
-                    <div className="flex items-center gap-4 pb-6 border-b border-neutral-200 dark:border-neutral-700">
-                        <div className="h-16 w-16 rounded-full bg-neutral-900 dark:bg-neutral-100 flex items-center justify-center text-white dark:text-neutral-900 text-2xl font-bold">
+                <div className="space-y-4 sm:space-y-6">
+                    <div className="flex items-center gap-3 sm:gap-4 pb-4 sm:pb-6 border-b border-neutral-200 dark:border-neutral-700">
+                        <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-full bg-neutral-900 dark:bg-neutral-100 flex items-center justify-center text-white dark:text-neutral-900 text-lg sm:text-2xl font-bold shrink-0">
                             {company?.companyName?.charAt(0) || 'C'}
                         </div>
-                        <div>
-                            <h3 className="text-xl font-semibold text-neutral-800 dark:text-neutral-100">
+                        <div className="min-w-0 flex-1">
+                            <h3 className="text-base sm:text-xl font-semibold text-neutral-800 dark:text-neutral-100 truncate">
                                 {company?.companyName || 'N/A'}
                             </h3>
-                            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                            <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400">
                                 Company Account
                             </p>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-sm font-medium text-neutral-600 dark:text-neutral-400 block mb-1">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                        <div className="min-w-0">
+                            <label className="text-xs sm:text-sm font-medium text-neutral-600 dark:text-neutral-400 block mb-1">
                                 Company Name
                             </label>
-                            <p className="text-base text-neutral-800 dark:text-neutral-100">
+                            <p className="text-sm sm:text-base text-neutral-800 dark:text-neutral-100 break-words">
                                 {company?.companyName || 'N/A'}
                             </p>
                         </div>
-                        <div>
-                            <label className="text-sm font-medium text-neutral-600 dark:text-neutral-400 block mb-1">
+                        <div className="min-w-0">
+                            <label className="text-xs sm:text-sm font-medium text-neutral-600 dark:text-neutral-400 block mb-1">
                                 Email
                             </label>
-                            <p className="text-base text-neutral-800 dark:text-neutral-100">
+                            <p className="text-sm sm:text-base text-neutral-800 dark:text-neutral-100 break-words">
                                 {company?.email || 'N/A'}
                             </p>
                         </div>
-                        <div>
-                            <label className="text-sm font-medium text-neutral-600 dark:text-neutral-400 block mb-1">
+                        <div className="min-w-0">
+                            <label className="text-xs sm:text-sm font-medium text-neutral-600 dark:text-neutral-400 block mb-1">
                                 Member Since
                             </label>
-                            <p className="text-base text-neutral-800 dark:text-neutral-100">
+                            <p className="text-sm sm:text-base text-neutral-800 dark:text-neutral-100">
                                 {company?.createdAt ? new Date(company.createdAt).toLocaleDateString() : 'N/A'}
                             </p>
                         </div>
                     </div>
 
-                    <div className="pt-4">
+                    <div className="pt-3 sm:pt-4">
                         <Button onClick={onClose} className="w-full">
                             Close
                         </Button>

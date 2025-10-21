@@ -74,13 +74,13 @@ export default function HowItWorks() {
     return (
         <section id="how-it-works" className="py-12 md:py-20 lg:py-32">
             <div className="bg-linear-to-b absolute inset-0 -z-10 sm:inset-6 sm:rounded-b-3xl dark:block dark:to-[color-mix(in_oklab,var(--color-zinc-900)_75%,var(--color-background))]"></div>
-            <div className="mx-auto max-w-5xl space-y-8 px-6 md:space-y-16 lg:space-y-20 dark:[--color-border:color-mix(in_oklab,var(--color-white)_10%,transparent)]">
+            <div className="mx-auto max-w-5xl space-y-8 px-6 sm:px-8 md:space-y-16 lg:space-y-20 dark:[--color-border:color-mix(in_oklab,var(--color-white)_10%,transparent)]">
                 <div className="relative z-10 mx-auto max-w-2xl space-y-6 text-center">
-                    <h2 className="text-balance text-4xl font-semibold lg:text-6xl">How It Works</h2>
-                    <p className="text-lg text-muted-foreground">Simple and secure process to verify educational certificates using blockchain technology and MetaMask wallet integration.</p>
+                    <h2 className="text-balance text-2xl sm:text-3xl md:text-4xl font-semibold lg:text-6xl">How It Works</h2>
+                    <p className="text-sm sm:text-base md:text-lg text-muted-foreground">Simple and secure process to verify educational certificates using blockchain technology and MetaMask wallet integration.</p>
                 </div>
 
-                <div className="grid gap-12 sm:px-12 md:grid-cols-2 lg:gap-20 lg:px-0">
+                <div className="grid gap-12 md:grid-cols-2 lg:gap-20">
                     <Accordion
                         type="single"
                         value={activeItem}
@@ -124,9 +124,9 @@ export default function HowItWorks() {
                         </AccordionItem>
                     </Accordion>
 
-                    <div className="bg-background relative flex overflow-hidden rounded-3xl border p-2">
+                    <div className="bg-background relative flex overflow-hidden rounded-3xl border p-2 mx-auto w-full max-w-sm sm:max-w-md md:max-w-none">
                         <div className="w-15 absolute inset-0 right-0 ml-auto border-l bg-[repeating-linear-gradient(-45deg,var(--color-border),var(--color-border)_1px,transparent_1px,transparent_8px)]"></div>
-                        <div className="aspect-76/59 bg-background relative w-[calc(3/4*100%+3rem)] rounded-2xl">
+                        <div className="aspect-76/59 bg-background relative w-full md:w-[calc(3/4*100%+3rem)] rounded-2xl mx-auto">
                             <AnimatePresence mode="wait">
                                 <motion.div
                                     key={`${activeItem}-id`}

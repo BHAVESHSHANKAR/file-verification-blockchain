@@ -253,40 +253,42 @@ export default function StudentsSection({ onNavigateToIssueCert }: StudentsSecti
     const displayStudents = searchQuery ? searchResults : allRecentStudents
 
     return (
-        <div className="p-4 md:p-10">
+        <div className="p-4 sm:p-6 md:p-10">
             <div className="max-w-7xl mx-auto">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <h1 className="text-3xl font-bold text-neutral-800 dark:text-neutral-100">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
+                    <div className="min-w-0">
+                        <h1 className="text-2xl sm:text-3xl font-bold text-neutral-800 dark:text-neutral-100">
                             Students Management
                         </h1>
-                        <p className="text-neutral-600 dark:text-neutral-400 mt-2">
+                        <p className="text-sm sm:text-base text-neutral-600 dark:text-neutral-400 mt-1 sm:mt-2">
                             Add and manage students under your institution
                         </p>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                         <Button
                             variant="outline"
                             onClick={() => setShowAllStudents(true)}
-                            className="flex items-center gap-2"
+                            className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm"
+                            size="sm"
                         >
-                            <Users className="h-4 w-4" />
-                            Students
+                            <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <span className="hidden xs:inline">Students</span>
                         </Button>
                         <Button
                             onClick={() => setShowAddForm(!showAddForm)}
-                            className="flex items-center gap-2"
+                            className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
+                            size="sm"
                         >
                             {showAddForm ? (
                                 <>
-                                    <X className="h-4 w-4" />
-                                    Cancel
+                                    <X className="h-3 w-3 sm:h-4 sm:w-4" />
+                                    <span>Cancel</span>
                                 </>
                             ) : (
                                 <>
-                                    <UserPlus className="h-4 w-4" />
-                                    Add Student
+                                    <UserPlus className="h-3 w-3 sm:h-4 sm:w-4" />
+                                    <span>Add Student</span>
                                 </>
                             )}
                         </Button>
@@ -294,7 +296,7 @@ export default function StudentsSection({ onNavigateToIssueCert }: StudentsSecti
                 </div>
 
                 {/* Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
                     <StatCard
                         icon={<Users className="h-6 w-6" />}
                         title="Total Students"
@@ -314,12 +316,12 @@ export default function StudentsSection({ onNavigateToIssueCert }: StudentsSecti
 
                 {/* Add Student Form */}
                 {showAddForm && (
-                    <div className="bg-white dark:bg-neutral-800 rounded-xl p-6 border border-neutral-200 dark:border-neutral-700 mb-8">
-                        <h2 className="text-xl font-bold text-neutral-800 dark:text-neutral-100 mb-6">
+                    <div className="bg-white dark:bg-neutral-800 rounded-xl p-4 sm:p-6 border border-neutral-200 dark:border-neutral-700 mb-6 sm:mb-8">
+                        <h2 className="text-lg sm:text-xl font-bold text-neutral-800 dark:text-neutral-100 mb-4 sm:mb-6">
                             Add New Student
                         </h2>
                         <form onSubmit={handleSubmit}>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                                 {/* University Name (Read-only) */}
                                 <div className="space-y-2">
                                     <Label htmlFor="university" className="text-sm font-medium">
@@ -437,8 +439,8 @@ export default function StudentsSection({ onNavigateToIssueCert }: StudentsSecti
                                 </div>
                             </div>
 
-                            <div className="mt-6 flex gap-3">
-                                <Button type="submit" className="flex-1" disabled={loading}>
+                            <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row gap-2 sm:gap-3">
+                                <Button type="submit" className="flex-1 w-full" disabled={loading}>
                                     {loading ? (
                                         <>
                                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -452,7 +454,7 @@ export default function StudentsSection({ onNavigateToIssueCert }: StudentsSecti
                                     type="button"
                                     variant="outline"
                                     onClick={() => setShowAddForm(false)}
-                                    className="flex-1"
+                                    className="flex-1 w-full"
                                     disabled={loading}
                                 >
                                     Cancel
@@ -464,11 +466,11 @@ export default function StudentsSection({ onNavigateToIssueCert }: StudentsSecti
 
                 {/* Students List */}
                 <div className="bg-white dark:bg-neutral-800 rounded-xl border border-neutral-200 dark:border-neutral-700">
-                    <div className="p-6 border-b border-neutral-200 dark:border-neutral-700">
-                        <h2 className="text-xl font-bold text-neutral-800 dark:text-neutral-100">
+                    <div className="p-4 sm:p-6 border-b border-neutral-200 dark:border-neutral-700">
+                        <h2 className="text-lg sm:text-xl font-bold text-neutral-800 dark:text-neutral-100">
                             Recently Added Students
                         </h2>
-                        <p className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+                        <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400 mt-1">
                             Showing {recentStudents.length} most recent {recentStudents.length === 1 ? 'student' : 'students'}
                         </p>
                     </div>
@@ -491,75 +493,132 @@ export default function StudentsSection({ onNavigateToIssueCert }: StudentsSecti
                             </p>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead className="bg-neutral-50 dark:bg-neutral-900">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                                            Name
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                                            Reg. Number
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                                            Year
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                                            Branch
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                                            Specialization
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                                            Actions
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
-                                    {recentStudents.map((student) => (
-                                        <tr key={student._id} className="hover:bg-neutral-50 dark:hover:bg-neutral-900/50">
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-neutral-800 dark:text-neutral-100">
-                                                {student.name}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600 dark:text-neutral-400">
-                                                {student.registrationNumber}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600 dark:text-neutral-400">
-                                                {student.currentYear}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600 dark:text-neutral-400">
-                                                {student.branch}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600 dark:text-neutral-400">
-                                                {student.specialization || '-'}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                                <div className="flex items-center gap-2">
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => handleEdit(student)}
-                                                        className="flex items-center gap-1"
-                                                    >
-                                                        <Edit className="h-3 w-3" />
-                                                        Edit
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => handleViewCertificates(student)}
-                                                        className="flex items-center gap-1"
-                                                    >
-                                                        <FileText className="h-3 w-3" />
-                                                        Certifications
-                                                    </Button>
+                        <>
+                            {/* Mobile Card View */}
+                            <div className="block md:hidden divide-y divide-neutral-200 dark:divide-neutral-700">
+                                {recentStudents.map((student) => (
+                                    <div key={student._id} className="p-4 hover:bg-neutral-50 dark:hover:bg-neutral-900/50">
+                                        <div className="space-y-3">
+                                            <div>
+                                                <p className="text-xs text-neutral-500 dark:text-neutral-400">Name</p>
+                                                <p className="text-sm font-medium text-neutral-800 dark:text-neutral-100">{student.name}</p>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <p className="text-xs text-neutral-500 dark:text-neutral-400">Reg. Number</p>
+                                                    <p className="text-sm text-neutral-600 dark:text-neutral-400">{student.registrationNumber}</p>
                                                 </div>
-                                            </td>
+                                                <div>
+                                                    <p className="text-xs text-neutral-500 dark:text-neutral-400">Year</p>
+                                                    <p className="text-sm text-neutral-600 dark:text-neutral-400">{student.currentYear}</p>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <p className="text-xs text-neutral-500 dark:text-neutral-400">Branch</p>
+                                                    <p className="text-sm text-neutral-600 dark:text-neutral-400">{student.branch}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-neutral-500 dark:text-neutral-400">Specialization</p>
+                                                    <p className="text-sm text-neutral-600 dark:text-neutral-400">{student.specialization || '-'}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2 pt-2">
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => handleEdit(student)}
+                                                    className="flex-1 flex items-center justify-center gap-1"
+                                                >
+                                                    <Edit className="h-3 w-3" />
+                                                    <span className="text-xs">Edit</span>
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => handleViewCertificates(student)}
+                                                    className="flex-1 flex items-center justify-center gap-1"
+                                                >
+                                                    <FileText className="h-3 w-3" />
+                                                    <span className="text-xs">Certificates</span>
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            
+                            {/* Desktop Table View */}
+                            <div className="hidden md:block overflow-x-auto">
+                                <table className="w-full">
+                                    <thead className="bg-neutral-50 dark:bg-neutral-900">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                                                Name
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                                                Reg. Number
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                                                Year
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                                                Branch
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                                                Specialization
+                                            </th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+                                                Actions
+                                            </th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody className="divide-y divide-neutral-200 dark:divide-neutral-700">
+                                        {recentStudents.map((student) => (
+                                            <tr key={student._id} className="hover:bg-neutral-50 dark:hover:bg-neutral-900/50">
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-neutral-800 dark:text-neutral-100">
+                                                    {student.name}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600 dark:text-neutral-400">
+                                                    {student.registrationNumber}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600 dark:text-neutral-400">
+                                                    {student.currentYear}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600 dark:text-neutral-400">
+                                                    {student.branch}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600 dark:text-neutral-400">
+                                                    {student.specialization || '-'}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                    <div className="flex items-center gap-2">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => handleEdit(student)}
+                                                            className="flex items-center gap-1"
+                                                        >
+                                                            <Edit className="h-3 w-3" />
+                                                            Edit
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => handleViewCertificates(student)}
+                                                            className="flex items-center gap-1"
+                                                        >
+                                                            <FileText className="h-3 w-3" />
+                                                            Certifications
+                                                        </Button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </>
                     )}
                 </div>
 

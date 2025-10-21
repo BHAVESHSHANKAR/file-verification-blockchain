@@ -1,13 +1,12 @@
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
 import { GraduationCap, Shield, Database, Network, Lock, CheckCircle } from 'lucide-react'
 
 export default function AboutSection() {
     return (
         <section id="about">
             <div className="py-24 md:py-32 bg-white dark:bg-zinc-950">
-                <div className="mx-auto max-w-5xl px-6">
-                    <div className="aspect-16/10 group relative mx-auto flex max-w-[22rem] items-center justify-between sm:max-w-sm">
+                <div className="mx-auto max-w-5xl px-6 sm:px-8 lg:px-6">
+                    <div className="aspect-16/10 group relative mx-auto flex max-w-[18rem] sm:max-w-[22rem] items-center justify-between">
                         <div
                             role="presentation"
                             className="bg-linear-to-b border-foreground/5 absolute inset-0 z-10 aspect-square animate-spin items-center justify-center rounded-full border-t from-lime-500/15 to-transparent to-25% opacity-0 duration-[3.5s] group-hover:opacity-100 dark:from-white/5"></div>
@@ -47,25 +46,16 @@ export default function AboutSection() {
                         </div>
                     </div>
                     <div className="bg-linear-to-t from-background relative z-20 mx-auto mt-12 max-w-2xl space-y-6 from-55% text-center">
-                        <h2 className="text-balance text-3xl font-semibold md:text-4xl">About EduVerify</h2>
-                        <p className="text-muted-foreground text-lg">
-                            EduVerify is a revolutionary decentralized platform that transforms educational credential verification using blockchain technology. 
-                            We combine the power of IPFS storage, Polygon Layer 2 blockchain, and Bloom filter algorithms to provide instant, 
+                        <h2 className="text-balance text-xl sm:text-2xl md:text-3xl font-semibold lg:text-4xl">About EduVerify</h2>
+                        <p className="text-muted-foreground text-sm sm:text-base md:text-lg">
+                            EduVerify is a revolutionary decentralized platform that transforms educational credential verification using blockchain technology.
+                            We combine the power of IPFS storage, Polygon Layer 2 blockchain, and Bloom filter algorithms to provide instant,
                             tamper-proof verification of academic certificates.
                         </p>
-                        <p className="text-muted-foreground">
-                            Our mission is to eliminate certificate fraud, reduce verification time from days to seconds, and create a trusted 
+                        <p className="text-muted-foreground text-xs sm:text-sm md:text-base">
+                            Our mission is to eliminate certificate fraud, reduce verification time from days to seconds, and create a trusted
                             ecosystem connecting universities, students, and employers worldwide.
                         </p>
-
-                        <div className="flex gap-4 justify-center pt-4">
-                            <Button size="sm" asChild>
-                                <a href="#home">Get Started</a>
-                            </Button>
-                            <Button variant="outline" size="sm" asChild>
-                                <a href="#how-it-works">Learn More</a>
-                            </Button>
-                        </div>
                     </div>
                 </div>
             </div>
