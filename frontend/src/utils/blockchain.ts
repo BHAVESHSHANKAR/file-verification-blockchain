@@ -571,31 +571,57 @@ export async function revokeCertificate(fileHash: string, reason: string) {
             console.log(`🚫 Revoking certificate with nonce: ${nonce}`);
 
             // Estimate gas first
-            let gasEstimate;
+            let gasEstimate = 200000n; // Default fallback
             try {
-                gasEstimate = await contract.revokeCertificate.estimateGas(fileHash, reason, { nonce });
+                gasEstimate = await contract.revokeCertificate.estimateGas(fileHash, reason);
                 console.log('⛽ Gas estimate:', gasEstimate.toString());
             } catch (estimateError: any) {
                 console.error('❌ Gas estimation failed:', estimateError);
 
                 // Parse error
                 const errorStr = JSON.stringify(estimateError).toLowerCase();
-                if (errorStr.includes('only issuing university')) {
+                const errorMsg = (estimateError.reason || estimateError.message || '').toLowerCase();
+                
+                if (errorStr.includes('only issuing university') || errorMsg.includes('only issuing university')) {
                     return {
                         success: false,
                         error: 'Only the issuing university can revoke this certificate.'
                     };
                 }
+                
+                if (errorStr.includes('already revoked') || errorMsg.includes('already revoked')) {
+                    return {
+                        success: false,
+                        error: 'This certificate has already been revoked.'
+                    };
+                }
+                
+                if (errorStr.includes('does not exist') || errorMsg.includes('does not exist')) {
+                    return {
+                        success: false,
+                        error: 'Certificate does not exist on blockchain.'
+                    };
+                }
 
-                return {
-                    success: false,
-                    error: 'Transaction would fail: ' + (estimateError.message || 'Unknown error')
-                };
+                // If gas estimation fails, use fallback gas limit
+                console.warn('⚠️ Using fallback gas limit:', gasEstimate.toString());
             }
 
-            // Send revoke transaction
+            // Get legacy gas price (Polygon Amoy doesn't support EIP-1559)
+            let gasPrice;
+            try {
+                const rawGasPrice = await provider.send('eth_gasPrice', []);
+                gasPrice = BigInt(rawGasPrice) * 12n / 10n; // 20% buffer
+                console.log('⛽ Legacy gas price:', gasPrice.toString());
+            } catch (gasError: any) {
+                console.error('❌ Failed to fetch gas price:', gasError);
+                return { success: false, error: 'Failed to fetch gas price. Please try again.' };
+            }
+            
+            // Send revoke transaction with legacy gas pricing
             const tx = await contract.revokeCertificate(fileHash, reason, {
-                gasLimit: gasEstimate * 12n / 10n, // 20% buffer
+                gasLimit: gasEstimate * 15n / 10n, // 50% buffer for safety
+                gasPrice,
                 nonce
             });
 
