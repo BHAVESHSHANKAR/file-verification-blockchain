@@ -575,7 +575,23 @@ export default function CompanyVerifySection({ selectedStudent, onBack, onStuden
                                                 )}
                                                 {/* Only show View Certificate button if not revoked */}
                                                 {!cert.isRevoked && (
-                                                    <button className="mt-2 sm:mt-3 text-xs bg-neutral-900 hover:bg-neutral-800 text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded w-full sm:w-auto">
+                                                    <button 
+                                                        onClick={() => {
+                                                            if (cert.ipfsHash) {
+                                                                // Open IPFS URL in new tab
+                                                                const ipfsUrl = `https://gateway.pinata.cloud/ipfs/${cert.ipfsHash}`
+                                                                window.open(ipfsUrl, '_blank', 'noopener,noreferrer')
+                                                            } else {
+                                                                // Show error toast
+                                                                const toast = document.createElement('div')
+                                                                toast.className = 'fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg bg-red-600 text-white font-medium'
+                                                                toast.textContent = 'Certificate file not available'
+                                                                document.body.appendChild(toast)
+                                                                setTimeout(() => document.body.removeChild(toast), 3000)
+                                                            }
+                                                        }}
+                                                        className="mt-2 sm:mt-3 text-xs bg-neutral-900 hover:bg-neutral-800 text-white px-2 sm:px-3 py-1 sm:py-1.5 rounded w-full sm:w-auto transition-colors cursor-pointer"
+                                                    >
                                                         View Certificate
                                                     </button>
                                                 )}
