@@ -2,7 +2,7 @@ import { LogoIcon } from '@/components/logo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import Link from 'next/link'
+import { Link } from 'react-router-dom'
 
 export default function LoginPage() {
     return (
@@ -13,7 +13,7 @@ export default function LoginPage() {
                 <div className="p-8 pb-6">
                     <div>
                         <Link
-                            href="/"
+                            to="/"
                             aria-label="go home">
                             <LogoIcon />
                         </Link>
@@ -142,7 +142,7 @@ export default function LoginPage() {
                             asChild
                             variant="link"
                             className="px-2">
-                            <Link href="#">Sign In</Link>
+                            <Link to="/login">Sign In</Link>
                         </Button>
                     </p>
                 </div>
