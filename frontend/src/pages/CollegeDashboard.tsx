@@ -81,6 +81,8 @@ export default function CollegeDashboard() {
     const handleLogout = () => {
         localStorage.removeItem('token')
         localStorage.removeItem('university')
+        localStorage.removeItem('selectedStudentForCert')
+        localStorage.removeItem('activeSection')
         navigate('/login')
     }
 
