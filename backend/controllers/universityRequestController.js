@@ -7,27 +7,86 @@ exports.submitRequest = async (req, res) => {
     try {
         const { name, username, email, password, walletAddress } = req.body;
 
-        // Check if request already exists
-        const existingRequest = await UniversityRequest.findOne({
-            $or: [{ email }, { username }, { walletAddress }]
-        });
-
-        if (existingRequest) {
+        // Validate required fields
+        if (!name || !username || !email || !password || !walletAddress) {
             return res.status(400).json({
                 success: false,
-                message: 'A request with this email, username, or wallet address already exists'
+                message: 'All fields are required'
             });
         }
 
-        // Check if university already exists
-        const existingUniversity = await University.findOne({
-            $or: [{ email }, { username }, { walletAddress }]
-        });
-
-        if (existingUniversity) {
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
             return res.status(400).json({
                 success: false,
-                message: 'A university with this email, username, or wallet address already exists'
+                message: 'Please provide a valid email address'
+            });
+        }
+
+        // Validate wallet address format
+        if (!walletAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid wallet address format'
+            });
+        }
+
+        // Validate password length
+        if (password.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: 'Password must be at least 6 characters long'
+            });
+        }
+
+        // Check if request already exists - check each field separately for specific error
+        const existingRequestByEmail = await UniversityRequest.findOne({ email });
+        if (existingRequestByEmail) {
+            return res.status(400).json({
+                success: false,
+                message: 'A registration request with this email already exists and is pending approval'
+            });
+        }
+
+        const existingRequestByUsername = await UniversityRequest.findOne({ username });
+        if (existingRequestByUsername) {
+            return res.status(400).json({
+                success: false,
+                message: 'A registration request with this username already exists and is pending approval'
+            });
+        }
+
+        const existingRequestByWallet = await UniversityRequest.findOne({ walletAddress });
+        if (existingRequestByWallet) {
+            return res.status(400).json({
+                success: false,
+                message: 'A registration request with this wallet address already exists and is pending approval'
+            });
+        }
+
+        // Check if university already exists - check each field separately
+        const existingUniversityByEmail = await University.findOne({ email });
+        if (existingUniversityByEmail) {
+            return res.status(400).json({
+                success: false,
+                message: 'This email is already registered. Please login or use a different email'
+            });
+        }
+
+        const existingUniversityByUsername = await University.findOne({ username });
+        if (existingUniversityByUsername) {
+            return res.status(400).json({
+                success: false,
+                message: 'This username is already taken. Please choose a different username'
+            });
+        }
+
+        const existingUniversityByWallet = await University.findOne({ walletAddress });
+        if (existingUniversityByWallet) {
+            return res.status(400).json({
+                success: false,
+                message: 'This wallet address is already registered. Please use a different wallet address'
             });
         }
 

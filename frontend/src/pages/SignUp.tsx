@@ -99,18 +99,62 @@ export default function SignUpPage() {
         e.preventDefault()
         
         // Validation
-        if (formData.password !== formData.confirmPassword) {
-            showToast('Passwords do not match', 'error')
+        // Check if all required fields are filled
+        if (!formData.name.trim()) {
+            showToast('University/College name is required', 'error')
             return
         }
 
-        if (formData.password.length < 6) {
-            showToast('Password must be at least 6 characters', 'error')
+        if (!formData.username.trim()) {
+            showToast('Username is required', 'error')
+            return
+        }
+
+        if (!formData.email.trim()) {
+            showToast('Email is required', 'error')
+            return
+        }
+
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(formData.email)) {
+            showToast('Please enter a valid email address (e.g., university@example.edu)', 'error')
+            return
+        }
+
+        // Check for institutional email (optional but recommended)
+        const institutionalDomains = ['.edu', '.ac.', '.edu.']
+        const hasInstitutionalDomain = institutionalDomains.some(domain => 
+            formData.email.toLowerCase().includes(domain)
+        )
+        
+        if (!hasInstitutionalDomain) {
+            // Just a warning, not blocking
+            console.warn('Non-institutional email detected:', formData.email)
+        }
+
+        if (!formData.walletAddress) {
+            showToast('Wallet address is required. Please connect your MetaMask wallet.', 'error')
             return
         }
 
         if (!formData.walletAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
-            showToast('Invalid wallet address format', 'error')
+            showToast('Invalid wallet address format. Please connect a valid MetaMask wallet.', 'error')
+            return
+        }
+
+        if (!formData.password) {
+            showToast('Password is required', 'error')
+            return
+        }
+
+        if (formData.password.length < 6) {
+            showToast('Password must be at least 6 characters long', 'error')
+            return
+        }
+
+        if (formData.password !== formData.confirmPassword) {
+            showToast('Passwords do not match. Please re-enter your password.', 'error')
             return
         }
 
@@ -130,7 +174,34 @@ export default function SignUpPage() {
                 setTimeout(() => navigate('/login'), 3000)
             }
         } catch (error: any) {
-            const message = error.response?.data?.message || 'Registration request failed. Please try again.'
+            console.error('Registration error:', error)
+            
+            // Extract specific error message from backend
+            let message = 'Registration request failed. Please try again.'
+            
+            if (error.response?.data?.message) {
+                const backendMessage = error.response.data.message
+                
+                // Provide more specific guidance based on error
+                if (backendMessage.includes('email')) {
+                    message = 'This email is already registered or has a pending request. Please use a different email address.'
+                } else if (backendMessage.includes('username')) {
+                    message = 'This username is already taken. Please choose a different username.'
+                } else if (backendMessage.includes('wallet address')) {
+                    message = 'This wallet address is already registered or has a pending request. Please use a different wallet address.'
+                } else if (backendMessage.includes('already exists')) {
+                    message = 'An account with these credentials already exists. Please check your email, username, or wallet address.'
+                } else {
+                    message = backendMessage
+                }
+            } else if (error.response?.status === 400) {
+                message = 'Invalid registration data. Please check all fields and try again.'
+            } else if (error.response?.status === 500) {
+                message = 'Server error. Please try again later.'
+            } else if (error.message === 'Network Error') {
+                message = 'Network error. Please check your internet connection and try again.'
+            }
+            
             showToast(message, 'error')
         } finally {
             setLoading(false)
