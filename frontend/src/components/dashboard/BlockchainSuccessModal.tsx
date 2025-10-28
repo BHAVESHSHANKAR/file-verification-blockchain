@@ -6,13 +6,15 @@ interface BlockchainSuccessModalProps {
     onClose: () => void;
     txHash: string;
     certificateName: string;
+    network?: 'polygon' | 'sepolia';
 }
 
 export default function BlockchainSuccessModal({
     visible,
     onClose,
     txHash,
-    certificateName
+    certificateName,
+    network = 'polygon'
 }: BlockchainSuccessModalProps) {
     const [txCopied, setTxCopied] = useState(false);
 
@@ -22,7 +24,22 @@ export default function BlockchainSuccessModal({
         setTimeout(() => setTxCopied(false), 2000);
     };
 
-    const explorerUrl = `https://amoy.polygonscan.com/tx/${txHash}`;
+    // Network-specific configuration
+    const networkConfig = {
+        polygon: {
+            name: 'Polygon Amoy',
+            explorerUrl: `https://amoy.polygonscan.com/tx/${txHash}`,
+            explorerName: 'Polygon Scan'
+        },
+        sepolia: {
+            name: 'Sepolia',
+            explorerUrl: `https://sepolia.etherscan.io/tx/${txHash}`,
+            explorerName: 'Etherscan'
+        }
+    };
+
+    const config = networkConfig[network];
+    const explorerUrl = config.explorerUrl;
 
     if (!visible) return null;
 
@@ -50,10 +67,10 @@ export default function BlockchainSuccessModal({
                     {/* Success Message */}
                     <div className="bg-neutral-50 dark:bg-neutral-800 p-6 rounded-lg border-2 border-black dark:border-white">
                         <h4 className="font-bold text-black dark:text-white mb-3 text-lg">
-                            Certificate Registered on Blockchain
+                            Certificate Registered on {config.name}
                         </h4>
                         <p className="text-neutral-700 dark:text-neutral-300 mb-4">
-                            <strong className="text-black dark:text-white">{certificateName}</strong> has been successfully recorded on the Polygon Amoy blockchain.
+                            <strong className="text-black dark:text-white">{certificateName}</strong> has been successfully recorded on the {config.name} blockchain.
                         </p>
 
                         {/* Transaction Hash */}
@@ -85,7 +102,7 @@ export default function BlockchainSuccessModal({
                             className="inline-flex items-center gap-2 text-sm text-black dark:text-white hover:underline font-semibold"
                         >
                             <ExternalLink className="h-4 w-4" />
-                            View on Polygon Scan
+                            View on {config.explorerName}
                         </a>
                     </div>
 

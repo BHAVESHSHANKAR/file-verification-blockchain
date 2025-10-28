@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { Award, ArrowLeft, User, Upload, FileText, Loader2, CheckCircle, X, Ban, AlertTriangle } from 'lucide-react'
+import { Award, ArrowLeft, User, Upload, FileText, Loader2, CheckCircle, X, Ban, AlertTriangle, Copy } from 'lucide-react'
 import axios from 'axios'
 import { API_ENDPOINTS } from '@/config/api'
 import { registerCertificateOnBlockchain, revokeCertificate } from '@/utils/blockchain'
@@ -46,7 +46,8 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
         file: File | null
         uploading: boolean
         uploaded: boolean
-    }>>([{ id: '1', name: '', file: null, uploading: false, uploaded: false }])
+        uploadingNetwork: 'polygon' | 'sepolia' | null
+    }>>([{ id: '1', name: '', file: null, uploading: false, uploaded: false, uploadingNetwork: null }])
 
 
 
@@ -64,6 +65,7 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
         isRevoked?: boolean
         revocationReason?: string
         revocationTimestamp?: string
+        network?: 'polygon' | 'sepolia'
     }>>([])
     const [loadingCertificates, setLoadingCertificates] = useState(false)
     const [currentPage, setCurrentPage] = useState(1)
@@ -73,6 +75,7 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
     const [blockchainModalVisible, setBlockchainModalVisible] = useState(false)
     const [blockchainTxHash, setBlockchainTxHash] = useState('')
     const [blockchainCertName, setBlockchainCertName] = useState('')
+    const [blockchainNetwork, setBlockchainNetwork] = useState<'polygon' | 'sepolia'>('polygon')
 
     // Upload cooldown state
     const [uploadCooldown, setUploadCooldown] = useState(false)
@@ -157,21 +160,7 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
         setTimeout(() => removeToast(), 3000)
     }
 
-    const addCertificateRow = () => {
-        setCertificates([...certificates, {
-            id: Date.now().toString(),
-            name: '',
-            file: null,
-            uploading: false,
-            uploaded: false
-        }])
-    }
 
-    const removeCertificateRow = (id: string) => {
-        if (certificates.length > 1) {
-            setCertificates(certificates.filter(cert => cert.id !== id))
-        }
-    }
 
     const updateCertificateName = (id: string, name: string) => {
         setCertificates(certificates.map(cert =>
@@ -403,7 +392,7 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
             })
 
             // Reset form and refresh
-            setCertificates([{ id: Date.now().toString(), name: '', file: null, uploading: false, uploaded: false }])
+            setCertificates([{ id: Date.now().toString(), name: '', file: null, uploading: false, uploaded: false, uploadingNetwork: null }])
             if (student) {
                 fetchUploadedCertificates(student._id)
             }
@@ -428,7 +417,7 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
     }
     */
 
-    const uploadCertificate = async (cert: typeof certificates[0]) => {
+    const uploadCertificate = async (cert: typeof certificates[0], network: 'polygon' | 'sepolia') => {
         if (!cert.name || !cert.file) {
             showToast('Please provide certificate name and file', 'error')
             return
@@ -440,9 +429,9 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
             return
         }
 
-        // Mark as uploading
+        // Mark as uploading with specific network
         setCertificates(certificates.map(c =>
-            c.id === cert.id ? { ...c, uploading: true } : c
+            c.id === cert.id ? { ...c, uploading: true, uploadingNetwork: network } : c
         ))
 
         try {
@@ -478,11 +467,12 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
                     ipfsHashStartsWith: uploadedData.ipfsHash?.substring(0, 2),
                     fileHash: uploadedData.fileHash,
                     fileHashLength: uploadedData.fileHash?.length,
-                    fileHashStartsWith: uploadedData.fileHash?.substring(0, 2)
+                    fileHashStartsWith: uploadedData.fileHash?.substring(0, 2),
+                    network: network
                 });
 
                 // Step 2: Register on blockchain
-                showToast('Registering on blockchain...', 'success')
+                showToast(`Registering on ${network === 'polygon' ? 'Polygon Amoy' : 'Sepolia'}...`, 'success')
                 
                 const blockchainResult = await registerCertificateOnBlockchain({
                     studentName: student!.name,
@@ -491,7 +481,7 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
                     ipfsUrl: uploadedData.ipfsUrl,
                     ipfsHash: uploadedData.ipfsHash,
                     fileHash: uploadedData.fileHash
-                })
+                }, network)
 
                 if (!blockchainResult.success) {
                     // Show the error from blockchain
@@ -499,7 +489,7 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
                     
                     // Reset uploading state
                     setCertificates(certificates.map(c =>
-                        c.id === cert.id ? { ...c, uploading: false } : c
+                        c.id === cert.id ? { ...c, uploading: false, uploadingNetwork: null } : c
                     ))
                     return
                 }
@@ -515,7 +505,8 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
                         fileName: uploadedData.fileName,
                         fileSize: uploadedData.fileSize,
                         blockchainTxHash: blockchainResult.txHash,
-                        blockchainBlockNumber: blockchainResult.blockNumber
+                        blockchainBlockNumber: blockchainResult.blockNumber,
+                        network: network
                     },
                     {
                         headers: { Authorization: `Bearer ${token}` }
@@ -525,6 +516,7 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
                 // Show success modal
                 setBlockchainTxHash(blockchainResult.txHash)
                 setBlockchainCertName(cert.name)
+                setBlockchainNetwork(network)
                 setBlockchainModalVisible(true)
 
                 // Start cooldown (10 seconds)
@@ -548,7 +540,7 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
                 
                 // If no certificates left, add a fresh one
                 if (certificates.length === 1) {
-                    setCertificates([{ id: Date.now().toString(), name: '', file: null, uploading: false, uploaded: false }])
+                    setCertificates([{ id: Date.now().toString(), name: '', file: null, uploading: false, uploaded: false, uploadingNetwork: null }])
                 }
                 
                 // Refresh certificates list and reset to page 1
@@ -562,7 +554,7 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
             showToast(message, 'error')
             // Reset uploading state
             setCertificates(certificates.map(c =>
-                c.id === cert.id ? { ...c, uploading: false } : c
+                c.id === cert.id ? { ...c, uploading: false, uploadingNetwork: null } : c
             ))
         }
     }
@@ -599,8 +591,9 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
 
             showToast('Revoking certificate on blockchain...', 'success')
 
-            // Revoke on blockchain
-            const result = await revokeCertificate(fileHash, revocationReason.trim())
+            // Revoke on blockchain (use the network the certificate was uploaded to)
+            const network = selectedCertForRevoke.network || 'polygon'
+            const result = await revokeCertificate(fileHash, revocationReason.trim(), network)
 
             if (!result.success) {
                 showToast(result.error || 'Failed to revoke certificate', 'error')
@@ -733,22 +726,16 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
             <div className="flex-1 bg-white dark:bg-neutral-900 p-4 sm:p-6 md:p-10 overflow-y-auto">
                 <div className="max-w-5xl">
                     {/* Header */}
-                    <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                        <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 sm:gap-3 mb-2">
-                                <Award className="h-6 w-6 sm:h-8 sm:w-8 text-neutral-900 dark:text-neutral-100 shrink-0" />
-                                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-neutral-900 dark:text-neutral-100">
-                                    Issue Certificates
-                                </h1>
-                            </div>
-                            <p className="text-sm sm:text-base text-neutral-600 dark:text-neutral-400 truncate">
-                                Upload certificates for {student.name}
-                            </p>
+                    <div className="mb-6 sm:mb-8">
+                        <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                            <Award className="h-6 w-6 sm:h-8 sm:w-8 text-neutral-900 dark:text-neutral-100 shrink-0" />
+                            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-neutral-900 dark:text-neutral-100">
+                                Issue Certificates
+                            </h1>
                         </div>
-                        <Button onClick={addCertificateRow} variant="outline" size="sm" className="w-full sm:w-auto shrink-0">
-                            <Upload className="mr-2 h-4 w-4" />
-                            <span className="text-xs sm:text-sm">Add Certificate</span>
-                        </Button>
+                        <p className="text-sm sm:text-base text-neutral-600 dark:text-neutral-400">
+                            Upload certificates for {student.name}
+                        </p>
                     </div>
 
                     {/* Certificate Rows */}
@@ -758,9 +745,9 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
                                 key={cert.id}
                                 className="border border-neutral-200 dark:border-neutral-700 rounded-lg p-3 sm:p-4"
                             >
-                                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start">
-                                    {/* Left: Certificate Name */}
-                                    <div className="flex-1 w-full min-w-0">
+                                <div className="space-y-4">
+                                    {/* Certificate Name */}
+                                    <div className="w-full">
                                         <Label htmlFor={`cert-name-${cert.id}`} className="text-xs sm:text-sm font-medium mb-2 block">
                                             Certificate Name *
                                         </Label>
@@ -775,85 +762,95 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
                                         />
                                     </div>
 
-                                    {/* Right: File Upload */}
-                                    <div className="flex-1 w-full min-w-0">
+                                    {/* File Upload */}
+                                    <div className="w-full">
                                         <Label className="text-xs sm:text-sm font-medium mb-2 block">
                                             Certificate File (PDF) *
                                         </Label>
-                                        <div className="flex flex-col sm:flex-row gap-2">
-                                            <div className="flex-1">
-                                                <input
-                                                    type="file"
-                                                    id={`cert-file-${cert.id}`}
-                                                    accept="application/pdf"
-                                                    onChange={(e) => updateCertificateFile(cert.id, e.target.files?.[0] || null)}
-                                                    className="hidden"
-                                                    disabled={cert.uploaded}
-                                                />
-                                                <label
-                                                    htmlFor={`cert-file-${cert.id}`}
-                                                    className={`flex items-center justify-center gap-2 h-10 px-4 border-2 border-dashed rounded-md cursor-pointer transition-colors ${cert.file
-                                                        ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
-                                                        : 'border-neutral-300 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-600'
-                                                        } ${cert.uploaded ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                >
-                                                    {cert.file ? (
-                                                        <>
-                                                            <FileText className="h-4 w-4 text-green-600 dark:text-green-400" />
-                                                            <span className="text-sm text-neutral-900 dark:text-neutral-100 truncate">
-                                                                {cert.file.name}
-                                                            </span>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Upload className="h-4 w-4 text-neutral-500" />
-                                                            <span className="text-sm text-neutral-600 dark:text-neutral-400">
-                                                                Choose file
-                                                            </span>
-                                                        </>
-                                                    )}
-                                                </label>
-                                            </div>
-
-                                            {/* Upload Button */}
-                                            {!cert.uploaded && (
-                                                <Button
-                                                    type="button"
-                                                    size="sm"
-                                                    onClick={() => uploadCertificate(cert)}
-                                                    disabled={cert.uploading || !cert.name || !cert.file || uploadCooldown}
-                                                >
-                                                    {cert.uploading ? (
-                                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                                    ) : uploadCooldown ? (
-                                                        `Wait ${cooldownSeconds}s`
-                                                    ) : (
-                                                        'Upload'
-                                                    )}
-                                                </Button>
-                                            )}
-
-                                            {/* Status/Remove Button */}
-                                            {cert.uploaded ? (
-                                                <div className="flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-900/20 rounded-md">
-                                                    <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                                                    <span className="text-sm text-green-700 dark:text-green-300">Uploaded</span>
-                                                </div>
+                                        <input
+                                            type="file"
+                                            id={`cert-file-${cert.id}`}
+                                            accept="application/pdf"
+                                            onChange={(e) => updateCertificateFile(cert.id, e.target.files?.[0] || null)}
+                                            className="hidden"
+                                            disabled={cert.uploaded}
+                                        />
+                                        <label
+                                            htmlFor={`cert-file-${cert.id}`}
+                                            className={`flex items-center justify-center gap-2 h-10 px-4 border-2 border-dashed rounded-md cursor-pointer transition-colors ${cert.file
+                                                ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                                                : 'border-neutral-300 dark:border-neutral-700 hover:border-neutral-400 dark:hover:border-neutral-600'
+                                                } ${cert.uploaded ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        >
+                                            {cert.file ? (
+                                                <>
+                                                    <FileText className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                                    <span className="text-sm text-neutral-900 dark:text-neutral-100 truncate">
+                                                        {cert.file.name}
+                                                    </span>
+                                                </>
                                             ) : (
-                                                certificates.length > 1 && (
-                                                    <Button
-                                                        type="button"
-                                                        variant="outline"
-                                                        size="sm"
-                                                        onClick={() => removeCertificateRow(cert.id)}
-                                                        disabled={cert.uploading}
-                                                    >
-                                                        <X className="h-4 w-4" />
-                                                    </Button>
-                                                )
+                                                <>
+                                                    <Upload className="h-4 w-4 text-neutral-500" />
+                                                    <span className="text-sm text-neutral-600 dark:text-neutral-400">
+                                                        Choose file
+                                                    </span>
+                                                </>
                                             )}
-                                        </div>
+                                        </label>
                                     </div>
+
+                                    {/* Upload Buttons - Below the fields */}
+                                    {!cert.uploaded && (
+                                        <div className="flex flex-col sm:flex-row gap-2 w-full">
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    uploadCertificate(cert, 'polygon');
+                                                }}
+                                                disabled={cert.uploading || !cert.name || !cert.file || uploadCooldown}
+                                                className="flex-1 bg-black hover:bg-neutral-800 text-white border-2 border-black dark:border-white"
+                                            >
+                                                {cert.uploading && cert.uploadingNetwork === 'polygon' ? (
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                ) : uploadCooldown ? (
+                                                    `Wait ${cooldownSeconds}s`
+                                                ) : (
+                                                    'Upload to Polygon Amoy'
+                                                )}
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    uploadCertificate(cert, 'sepolia');
+                                                }}
+                                                disabled={cert.uploading || !cert.name || !cert.file || uploadCooldown}
+                                                className="flex-1 bg-black hover:bg-neutral-800 text-white border-2 border-black dark:border-white"
+                                            >
+                                                {cert.uploading && cert.uploadingNetwork === 'sepolia' ? (
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                ) : uploadCooldown ? (
+                                                    `Wait ${cooldownSeconds}s`
+                                                ) : (
+                                                    'Upload to Sepolia'
+                                                )}
+                                            </Button>
+                                        </div>
+                                    )}
+
+                                    {/* Status */}
+                                    {cert.uploaded && (
+                                        <div className="flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-900/20 rounded-md">
+                                            <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                            <span className="text-sm text-green-700 dark:text-green-300">Uploaded</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         ))}
@@ -926,7 +923,7 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
                                                                     <div className="flex items-center gap-2 px-2 py-1 bg-red-50 dark:bg-red-900/20 rounded-md border border-red-200 dark:border-red-800">
                                                                         <Ban className="h-4 w-4 text-red-600 dark:text-red-400" />
                                                                         <span className="text-xs font-medium text-red-700 dark:text-red-300">
-                                                                            Revoked
+                                                                            Revoked on {cert.network === 'sepolia' ? 'Sepolia' : 'Polygon Amoy'}
                                                                         </span>
                                                                     </div>
                                                                     {cert.revocationReason && (
@@ -939,21 +936,53 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
                                                                             {new Date(cert.revocationTimestamp).toLocaleDateString()}
                                                                         </p>
                                                                     )}
+                                                                    {cert.blockchainTxHash && (
+                                                                        <div className="flex items-center gap-1 mt-1">
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    navigator.clipboard.writeText(cert.blockchainTxHash || '');
+                                                                                    showToast('Transaction hash copied!', 'success');
+                                                                                }}
+                                                                                className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                                                                                title="Copy transaction hash"
+                                                                            >
+                                                                                <Copy className="h-3 w-3" />
+                                                                                Copy Tx Hash
+                                                                            </button>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             ) : cert.blockchainVerified && cert.blockchainTxHash ? (
                                                                 <div className="flex flex-col gap-1">
                                                                     <div className="flex items-center gap-2 px-2 py-1 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800">
                                                                         <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
                                                                         <span className="text-xs font-medium text-green-700 dark:text-green-300">
-                                                                            On Blockchain
+                                                                            On {cert.network === 'sepolia' ? 'Sepolia' : 'Polygon Amoy'}
                                                                         </span>
                                                                     </div>
-                                                                    <button
-                                                                        onClick={() => window.open(`https://amoy.polygonscan.com/tx/${cert.blockchainTxHash}`, '_blank')}
-                                                                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline text-left"
-                                                                    >
-                                                                        View Transaction
-                                                                    </button>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                const explorerUrl = cert.network === 'sepolia' 
+                                                                                    ? `https://sepolia.etherscan.io/tx/${cert.blockchainTxHash}`
+                                                                                    : `https://amoy.polygonscan.com/tx/${cert.blockchainTxHash}`;
+                                                                                window.open(explorerUrl, '_blank');
+                                                                            }}
+                                                                            className="text-xs text-blue-600 dark:text-blue-400 hover:underline text-left"
+                                                                        >
+                                                                            View on {cert.network === 'sepolia' ? 'Sepolia' : 'Polygon'}
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                navigator.clipboard.writeText(cert.blockchainTxHash || '');
+                                                                                showToast('Transaction hash copied!', 'success');
+                                                                            }}
+                                                                            className="text-xs text-neutral-600 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400"
+                                                                            title="Copy transaction hash"
+                                                                        >
+                                                                            <Copy className="h-3 w-3" />
+                                                                        </button>
+                                                                    </div>
                                                                     {/* Revoke Button */}
                                                                     <Button
                                                                         size="sm"
@@ -1021,6 +1050,7 @@ export default function IssueCertificate({ preSelectedStudent, onBack }: IssueCe
                 onClose={() => setBlockchainModalVisible(false)}
                 txHash={blockchainTxHash}
                 certificateName={blockchainCertName}
+                network={blockchainNetwork}
             />
 
             {/* Revoke Certificate Modal */}

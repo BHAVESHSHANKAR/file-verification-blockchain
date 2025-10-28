@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Search, ExternalLink, FileText, User, Calendar, Shield, Loader2, CheckCircle, XCircle } from 'lucide-react'
 import { ethers } from 'ethers'
-import contractABI from '@/CertificateRegistry.json'
+import contractABIPolygon from '@/CertificateRegistry.json'
+import contractABISepolia from '@/CertificateRegistrySeoplia.json'
 
 interface CertificateData {
     studentName: string
@@ -33,23 +34,46 @@ interface TransactionData {
     timestamp: string
 }
 
-// RPC URLs for fallback
-const RPC_URLS = [
-    'https://rpc-amoy.polygon.technology',
-    'https://rpc.ankr.com/polygon_amoy',
-    'https://polygon-amoy-bor-rpc.publicnode.com'
-]
-
 export default function BlockchainVerification() {
     const [txHash, setTxHash] = useState('')
     const [loading, setLoading] = useState(false)
+    const [selectedNetwork, setSelectedNetwork] = useState<'polygon' | 'sepolia'>('polygon')
     const [verificationResult, setVerificationResult] = useState<{
         certificate: CertificateData | null
         transaction: TransactionData | null
         error: string | null
     } | null>(null)
 
-    const contractAddress = import.meta.env.VITE_CONTRACT_ADDRESS
+    // Network configurations
+    const networkConfig = {
+        polygon: {
+            name: 'Polygon Amoy',
+            contractAddress: import.meta.env.VITE_CONTRACT_ADDRESS,
+            rpcUrls: [
+                'https://rpc-amoy.polygon.technology',
+                'https://polygon-amoy-bor-rpc.publicnode.com',
+                'https://polygon-amoy.drpc.org'
+            ],
+            chainId: 80002,
+            explorerUrl: 'https://amoy.polygonscan.com',
+            explorerName: 'PolygonScan'
+        },
+        sepolia: {
+            name: 'Sepolia',
+            contractAddress: import.meta.env.VITE_CONTRACT_ADDRESS_SEPOLIA,
+            rpcUrls: [
+                'https://rpc.sepolia.org',
+                'https://ethereum-sepolia-rpc.publicnode.com',
+                'https://rpc2.sepolia.org'
+            ],
+            chainId: 11155111,
+            explorerUrl: 'https://sepolia.etherscan.io',
+            explorerName: 'Etherscan'
+        }
+    }
+
+    const currentNetwork = networkConfig[selectedNetwork]
+    const contractAddress = currentNetwork.contractAddress
 
     const verifyByTxHash = async () => {
         if (!txHash.trim()) {
@@ -69,11 +93,11 @@ export default function BlockchainVerification() {
             let receipt = null
             let lastError = null
 
-            for (const rpcUrl of RPC_URLS) {
+            for (const rpcUrl of currentNetwork.rpcUrls) {
                 try {
                     const tempProvider = new ethers.JsonRpcProvider(
                         rpcUrl,
-                        { chainId: 80002, name: 'polygon-amoy' },
+                        { chainId: currentNetwork.chainId, name: currentNetwork.name.toLowerCase().replace(' ', '-') },
                         { staticNetwork: true }
                     )
                     receipt = await tempProvider.getTransactionReceipt(txHash)
@@ -98,6 +122,7 @@ export default function BlockchainVerification() {
             const block = await receipt.provider.getBlock(receipt.blockNumber)
 
             // Parse transaction data to extract certificate info
+            const contractABI = selectedNetwork === 'polygon' ? contractABIPolygon : contractABISepolia
             const contract = new ethers.Contract(contractAddress, contractABI.abi, receipt.provider)
             const iface = contract.interface
 
@@ -163,10 +188,26 @@ export default function BlockchainVerification() {
             }
         } catch (error: any) {
             console.error('Verification error:', error)
+            
+            // Parse error to provide user-friendly message
+            let errorMessage = 'Failed to verify transaction'
+            
+            const errorStr = error.message?.toLowerCase() || ''
+            
+            if (errorStr.includes('unauthorized') || errorStr.includes('api key')) {
+                errorMessage = `Unable to connect to ${currentNetwork.name}. Please check if you selected the correct network for this transaction hash.`
+            } else if (errorStr.includes('transaction not found') || errorStr.includes('not found')) {
+                errorMessage = `Transaction not found on ${currentNetwork.name}. Please verify:\n• The transaction hash is correct\n• You selected the right network (${currentNetwork.name})`
+            } else if (errorStr.includes('invalid') || errorStr.includes('malformed')) {
+                errorMessage = 'Invalid transaction hash format. Please check and try again.'
+            } else if (error.message) {
+                errorMessage = `Verification failed. Please ensure:\n• The transaction hash is correct\n• You selected the correct network (${currentNetwork.name})\n• The transaction exists on the blockchain`
+            }
+            
             setVerificationResult({
                 certificate: null,
                 transaction: null,
-                error: error.message || 'Failed to verify transaction'
+                error: errorMessage
             })
         } finally {
             setLoading(false)
@@ -185,8 +226,39 @@ export default function BlockchainVerification() {
                         Blockchain Verification
                     </h1>
                     <p className="text-neutral-600 dark:text-neutral-400">
-                        Verify certificates on Polygon Amoy blockchain
+                        Verify certificates on blockchain networks
                     </p>
+                </div>
+            </div>
+
+            {/* Network Selection */}
+            <div className="max-w-2xl">
+                <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg p-6">
+                    <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">
+                        Select Network
+                    </h2>
+                    <div className="flex gap-3">
+                        <Button
+                            onClick={() => {
+                                setSelectedNetwork('polygon')
+                                setVerificationResult(null)
+                            }}
+                            variant={selectedNetwork === 'polygon' ? 'default' : 'outline'}
+                            className={selectedNetwork === 'polygon' ? 'bg-black text-white hover:bg-neutral-800' : ''}
+                        >
+                            Polygon Amoy
+                        </Button>
+                        <Button
+                            onClick={() => {
+                                setSelectedNetwork('sepolia')
+                                setVerificationResult(null)
+                            }}
+                            variant={selectedNetwork === 'sepolia' ? 'default' : 'outline'}
+                            className={selectedNetwork === 'sepolia' ? 'bg-black text-white hover:bg-neutral-800' : ''}
+                        >
+                            Sepolia
+                        </Button>
+                    </div>
                 </div>
             </div>
 
@@ -194,7 +266,7 @@ export default function BlockchainVerification() {
             <div className="max-w-2xl">
                 <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg p-6">
                     <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100 mb-4">
-                        Verify Certificate by Transaction Hash
+                        Verify Certificate on {currentNetwork.name}
                     </h2>
                     <div className="space-y-4">
                         <div>
@@ -232,11 +304,24 @@ export default function BlockchainVerification() {
             {verificationResult && (
                 <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 rounded-lg p-6">
                     {verificationResult.error ? (
-                        <div className="flex items-start gap-3 text-red-600 dark:text-red-400">
-                            <XCircle className="h-6 w-6 shrink-0 mt-0.5" />
-                            <div>
-                                <h3 className="font-semibold text-lg">Verification Failed</h3>
-                                <p className="text-sm mt-1">{verificationResult.error}</p>
+                        <div className="flex items-start gap-3">
+                            <XCircle className="h-6 w-6 shrink-0 mt-0.5 text-red-600 dark:text-red-400" />
+                            <div className="flex-1">
+                                <h3 className="font-semibold text-lg text-red-600 dark:text-red-400 mb-2">Verification Failed</h3>
+                                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                                    <p className="text-sm text-red-800 dark:text-red-200 whitespace-pre-line">
+                                        {verificationResult.error}
+                                    </p>
+                                </div>
+                                <div className="mt-4 text-sm text-neutral-600 dark:text-neutral-400">
+                                    <p className="font-medium mb-2">Troubleshooting tips:</p>
+                                    <ul className="list-disc list-inside space-y-1">
+                                        <li>Verify the transaction hash is complete and correct</li>
+                                        <li>Ensure you selected the correct network ({currentNetwork.name})</li>
+                                        <li>Check if the transaction has been confirmed on the blockchain</li>
+                                        <li>Try switching to the other network if unsure</li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     ) : (
@@ -330,10 +415,10 @@ export default function BlockchainVerification() {
                                         <Button
                                             variant="outline"
                                             size="sm"
-                                            onClick={() => window.open(`https://amoy.polygonscan.com/address/${verificationResult.certificate?.universityAddress}`, '_blank')}
+                                            onClick={() => window.open(`${currentNetwork.explorerUrl}/address/${verificationResult.certificate?.universityAddress}`, '_blank')}
                                         >
                                             <ExternalLink className="h-4 w-4 mr-2" />
-                                            View University on PolygonScan
+                                            View University on {currentNetwork.explorerName}
                                         </Button>
                                     </div>
                                 </div>
@@ -363,10 +448,10 @@ export default function BlockchainVerification() {
                                     <Button
                                         variant="outline"
                                         size="sm"
-                                        onClick={() => window.open(`https://amoy.polygonscan.com/tx/${verificationResult.transaction?.hash}`, '_blank')}
+                                        onClick={() => window.open(`${currentNetwork.explorerUrl}/tx/${verificationResult.transaction?.hash}`, '_blank')}
                                     >
                                         <ExternalLink className="h-4 w-4 mr-2" />
-                                        View on PolygonScan
+                                        View on {currentNetwork.explorerName}
                                     </Button>
                                 </div>
                             )}

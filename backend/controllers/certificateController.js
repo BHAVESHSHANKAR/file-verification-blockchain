@@ -300,7 +300,7 @@ exports.verifyCertificate = async (req, res) => {
 // Save blockchain transaction data after frontend completes transaction
 exports.saveBlockchainData = async (req, res) => {
     try {
-        const { studentId, certificateName, ipfsHash, fileHash, fileName, fileSize, blockchainTxHash, blockchainBlockNumber } = req.body;
+        const { studentId, certificateName, ipfsHash, fileHash, fileName, fileSize, blockchainTxHash, blockchainBlockNumber, network } = req.body;
 
         // Find student
         const student = await Student.findById(studentId);
@@ -330,7 +330,8 @@ exports.saveBlockchainData = async (req, res) => {
             issuedAt: new Date(),
             blockchainTxHash,
             blockchainBlockNumber,
-            blockchainVerified: true
+            blockchainVerified: true,
+            network: network || 'polygon' // Default to polygon for backward compatibility
         };
 
         // Add certificate to student

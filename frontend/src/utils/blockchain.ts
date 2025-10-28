@@ -1,33 +1,64 @@
 import { ethers } from 'ethers';
 import contractABI from '../CertificateRegistry.json';
+import contractABISepolia from '../CertificateRegistrySeoplia.json';
 import { txQueue } from './blockchainQueue';
 
-// ✅ Contract address from environment
-const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS;
+// ✅ Contract addresses from environment
+const CONTRACT_ADDRESS_POLYGON = import.meta.env.VITE_CONTRACT_ADDRESS;
+const CONTRACT_ADDRESS_SEPOLIA = import.meta.env.VITE_CONTRACT_ADDRESS_SEPOLIA;
 
-// ✅ Minimal ABI - only functions we actually use
-const CERTIFICATE_ABI = contractABI.abi;
+// ✅ ABIs for both networks
+const CERTIFICATE_ABI_POLYGON = contractABI.abi;
+const CERTIFICATE_ABI_SEPOLIA = contractABISepolia.abi;
+
+// Network configurations
+const NETWORKS = {
+    polygon: {
+        chainId: 80002n,
+        chainIdHex: '0x13882',
+        name: 'Polygon Amoy Testnet',
+        rpcUrl: 'https://rpc-amoy.polygon.technology',
+        explorerUrl: 'https://amoy.polygonscan.com',
+        contractAddress: CONTRACT_ADDRESS_POLYGON,
+        abi: CERTIFICATE_ABI_POLYGON,
+        nativeCurrency: { name: 'MATIC', symbol: 'MATIC', decimals: 18 }
+    },
+    sepolia: {
+        chainId: 11155111n,
+        chainIdHex: '0xaa36a7',
+        name: 'Sepolia Testnet',
+        rpcUrl: 'https://rpc.sepolia.org',
+        explorerUrl: 'https://sepolia.etherscan.io',
+        contractAddress: CONTRACT_ADDRESS_SEPOLIA,
+        abi: CERTIFICATE_ABI_SEPOLIA,
+        nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }
+    }
+};
 
 // Debug log (remove in production)
 console.log('🔧 Blockchain config loaded:', {
-    contractAddress: CONTRACT_ADDRESS,
-    abiLoaded: CERTIFICATE_ABI && CERTIFICATE_ABI.length > 0
+    polygonAddress: CONTRACT_ADDRESS_POLYGON,
+    sepoliaAddress: CONTRACT_ADDRESS_SEPOLIA,
+    polygonAbiLoaded: CERTIFICATE_ABI_POLYGON && CERTIFICATE_ABI_POLYGON.length > 0,
+    sepoliaAbiLoaded: CERTIFICATE_ABI_SEPOLIA && CERTIFICATE_ABI_SEPOLIA.length > 0
 });
 
 /**
- * 🔌 Connect to contract (following your previous project pattern)
+ * 🔌 Connect to contract (supports both networks)
  */
-export const connectToContract = async () => {
+export const connectToContract = async (network: 'polygon' | 'sepolia' = 'polygon') => {
     if (!window.ethereum) {
         throw new Error("MetaMask not installed");
     }
 
-    if (!CONTRACT_ADDRESS) {
-        throw new Error("Contract address not configured");
+    const networkConfig = NETWORKS[network];
+
+    if (!networkConfig.contractAddress) {
+        throw new Error(`Contract address not configured for ${network}`);
     }
 
-    if (!CERTIFICATE_ABI || CERTIFICATE_ABI.length === 0) {
-        throw new Error("Contract ABI not loaded");
+    if (!networkConfig.abi || networkConfig.abi.length === 0) {
+        throw new Error(`Contract ABI not loaded for ${network}`);
     }
 
     // Request account access
@@ -35,7 +66,7 @@ export const connectToContract = async () => {
 
     const provider = new ethers.BrowserProvider(window.ethereum);
     const signer = await provider.getSigner();
-    const contract = new ethers.Contract(CONTRACT_ADDRESS, CERTIFICATE_ABI, signer);
+    const contract = new ethers.Contract(networkConfig.contractAddress, networkConfig.abi, signer);
 
     return contract;
 };
@@ -221,32 +252,33 @@ export const registerCertificateOnBlockchain = async (certData: {
     ipfsUrl: string;
     ipfsHash: string;
     fileHash: string;
-}, maxRetries: number = 3) => {
+}, targetNetwork: 'polygon' | 'sepolia' = 'polygon', maxRetries: number = 3) => {
     try {
         // Check and switch to correct network
         if (!window.ethereum) {
             throw new Error('MetaMask not installed');
         }
 
+        const networkConfig = NETWORKS[targetNetwork];
         const tempProvider = new ethers.BrowserProvider(window.ethereum);
         const network = await tempProvider.getNetwork();
         console.log('🌐 Current network:', network.chainId.toString());
 
-        if (network.chainId !== 80002n) {
-            console.log('⚠️ Wrong network detected. Switching to Polygon Amoy...');
+        if (network.chainId !== networkConfig.chainId) {
+            console.log(`⚠️ Wrong network detected. Switching to ${networkConfig.name}...`);
             try {
-                await switchToPolygonAmoy();
-                console.log('✅ Switched to Polygon Amoy');
+                await switchToNetwork(targetNetwork);
+                console.log(`✅ Switched to ${networkConfig.name}`);
                 await new Promise(resolve => setTimeout(resolve, 1000));
             } catch (switchError: any) {
                 return {
                     success: false,
-                    error: 'Please switch to Polygon Amoy testnet in MetaMask and try again.'
+                    error: `Please switch to ${networkConfig.name} in MetaMask and try again.`
                 };
             }
         }
 
-        const contract = await connectToContract();
+        const contract = await connectToContract(targetNetwork);
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
         const userAddress = await signer.getAddress();
@@ -413,13 +445,14 @@ export async function verifyCertificateOnBlockchain(fileHash: string) {
             contract = await connectToContract();
         } catch (connectError) {
             console.log('⚠️ MetaMask not available, using read-only provider');
-            // Use read-only provider for companies without MetaMask
+            // Use read-only provider for companies without MetaMask (default to Polygon)
+            const networkConfig = NETWORKS.polygon;
             const provider = new ethers.JsonRpcProvider(
-                'https://rpc-amoy.polygon.technology',
-                { chainId: 80002, name: 'polygon-amoy' },
+                networkConfig.rpcUrl,
+                { chainId: Number(networkConfig.chainId), name: 'polygon-amoy' },
                 { staticNetwork: true }
             );
-            contract = new ethers.Contract(CONTRACT_ADDRESS, CERTIFICATE_ABI, provider);
+            contract = new ethers.Contract(networkConfig.contractAddress, networkConfig.abi, provider);
         }
 
         // Check if certificate exists
@@ -488,17 +521,19 @@ export async function getTotalCertificates() {
 }
 
 /**
- * 🔄 Switch to Polygon Amoy network
+ * 🔄 Switch to specified network
  */
-export async function switchToPolygonAmoy() {
+export async function switchToNetwork(network: 'polygon' | 'sepolia') {
     if (typeof window.ethereum === 'undefined') {
         throw new Error('MetaMask is not installed');
     }
 
+    const networkConfig = NETWORKS[network];
+
     try {
         await window.ethereum.request({
             method: 'wallet_switchEthereumChain',
-            params: [{ chainId: '0x13882' }], // 80002 in hex
+            params: [{ chainId: networkConfig.chainIdHex }],
         });
     } catch (switchError: any) {
         // This error code indicates that the chain has not been added to MetaMask
@@ -508,15 +543,11 @@ export async function switchToPolygonAmoy() {
                     method: 'wallet_addEthereumChain',
                     params: [
                         {
-                            chainId: '0x13882',
-                            chainName: 'Polygon Amoy Testnet',
-                            nativeCurrency: {
-                                name: 'MATIC',
-                                symbol: 'MATIC',
-                                decimals: 18
-                            },
-                            rpcUrls: ['https://rpc-amoy.polygon.technology'],
-                            blockExplorerUrls: ['https://amoy.polygonscan.com/']
+                            chainId: networkConfig.chainIdHex,
+                            chainName: networkConfig.name,
+                            nativeCurrency: networkConfig.nativeCurrency,
+                            rpcUrls: [networkConfig.rpcUrl],
+                            blockExplorerUrls: [networkConfig.explorerUrl]
                         }
                     ]
                 });
@@ -530,14 +561,49 @@ export async function switchToPolygonAmoy() {
 }
 
 /**
+ * 🔄 Switch to Polygon Amoy network (backward compatibility)
+ */
+export async function switchToPolygonAmoy() {
+    return switchToNetwork('polygon');
+}
+
+/**
  * 🚫 Revoke a certificate
  * @param fileHash SHA-512 hash of the certificate to revoke
  * @param reason Reason for revocation
+ * @param network Network to revoke on (polygon or sepolia)
  */
-export async function revokeCertificate(fileHash: string, reason: string) {
+export async function revokeCertificate(fileHash: string, reason: string, network: 'polygon' | 'sepolia' = 'polygon') {
     return txQueue.add(async () => {
         try {
-            const contract = await connectToContract();
+            // Check and switch to correct network first
+            if (!window.ethereum) {
+                throw new Error('MetaMask not installed');
+            }
+
+            const networkConfig = NETWORKS[network];
+            const tempProvider = new ethers.BrowserProvider(window.ethereum);
+            const currentNetwork = await tempProvider.getNetwork();
+
+            console.log('🌐 Current network:', currentNetwork.chainId.toString());
+            console.log('🎯 Target network:', networkConfig.chainId.toString());
+
+            if (currentNetwork.chainId !== networkConfig.chainId) {
+                console.log(`⚠️ Wrong network detected. Switching to ${networkConfig.name}...`);
+                try {
+                    await switchToNetwork(network);
+                    console.log(`✅ Switched to ${networkConfig.name}`);
+                    // Wait a bit for network to stabilize
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } catch (switchError: any) {
+                    return {
+                        success: false,
+                        error: `Please switch to ${networkConfig.name} in MetaMask and try again.`
+                    };
+                }
+            }
+
+            const contract = await connectToContract(network);
             const provider = new ethers.BrowserProvider(window.ethereum!);
             const signer = await provider.getSigner();
             const userAddress = await signer.getAddress();
@@ -581,21 +647,21 @@ export async function revokeCertificate(fileHash: string, reason: string) {
                 // Parse error
                 const errorStr = JSON.stringify(estimateError).toLowerCase();
                 const errorMsg = (estimateError.reason || estimateError.message || '').toLowerCase();
-                
+
                 if (errorStr.includes('only issuing university') || errorMsg.includes('only issuing university')) {
                     return {
                         success: false,
                         error: 'Only the issuing university can revoke this certificate.'
                     };
                 }
-                
+
                 if (errorStr.includes('already revoked') || errorMsg.includes('already revoked')) {
                     return {
                         success: false,
                         error: 'This certificate has already been revoked.'
                     };
                 }
-                
+
                 if (errorStr.includes('does not exist') || errorMsg.includes('does not exist')) {
                     return {
                         success: false,
@@ -617,7 +683,7 @@ export async function revokeCertificate(fileHash: string, reason: string) {
                 console.error('❌ Failed to fetch gas price:', gasError);
                 return { success: false, error: 'Failed to fetch gas price. Please try again.' };
             }
-            
+
             // Send revoke transaction with legacy gas pricing
             const tx = await contract.revokeCertificate(fileHash, reason, {
                 gasLimit: gasEstimate * 15n / 10n, // 50% buffer for safety
@@ -734,16 +800,17 @@ export async function replaceCertificate(
  * 🔍 Get revocation status of a certificate
  * @param fileHash SHA-512 hash of the certificate
  */
-export async function getRevocationStatus(fileHash: string) {
+export async function getRevocationStatus(fileHash: string, network: 'polygon' | 'sepolia' = 'polygon') {
     try {
         // Use read-only provider (no MetaMask required)
+        const networkConfig = NETWORKS[network];
         const provider = new ethers.JsonRpcProvider(
-            'https://rpc-amoy.polygon.technology',
-            { chainId: 80002, name: 'polygon-amoy' },
+            networkConfig.rpcUrl,
+            { chainId: Number(networkConfig.chainId), name: networkConfig.name },
             { staticNetwork: true }
         );
 
-        const contract = new ethers.Contract(CONTRACT_ADDRESS, CERTIFICATE_ABI, provider);
+        const contract = new ethers.Contract(networkConfig.contractAddress, networkConfig.abi, provider);
         const status = await contract.getRevocationStatus(fileHash);
 
         return {
@@ -778,4 +845,10 @@ export async function isValidCertificate(fileHash: string) {
     }
 }
 
-export { CONTRACT_ADDRESS, CERTIFICATE_ABI };
+export {
+    CONTRACT_ADDRESS_POLYGON,
+    CONTRACT_ADDRESS_SEPOLIA,
+    CERTIFICATE_ABI_POLYGON,
+    CERTIFICATE_ABI_SEPOLIA,
+    NETWORKS
+};

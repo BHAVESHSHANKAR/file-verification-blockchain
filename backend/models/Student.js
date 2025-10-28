@@ -69,6 +69,12 @@ const certificateSchema = new mongoose.Schema({
     replacementCertificateHash: {
         type: String,
         default: null
+    },
+    // Network field (polygon or sepolia)
+    network: {
+        type: String,
+        enum: ['polygon', 'sepolia'],
+        default: 'polygon'
     }
 }, {
     timestamps: true
