@@ -205,42 +205,149 @@ exports.voteOnRequest = async (req, res) => {
 
         // Get total number of approved universities
         const totalUniversities = await University.countDocuments({ status: 'approved' });
-        const requiredApprovals = Math.ceil(totalUniversities * 0.7); // 70% approval needed
-        const maxPossibleRejections = totalUniversities - requiredApprovals;
+        
+        // 🔥 NEW LOGIC: 100% unanimous approval required
+        // If ANY university rejects → Request is REJECTED immediately
+        if (vote === 'reject') {
+            request.status = 'rejected';
+            await request.save();
+            
+            return res.status(200).json({
+                success: true,
+                message: 'Request rejected. Unanimous approval is required for new universities.',
+                data: {
+                    requestId: request._id,
+                    status: 'rejected',
+                    approvalCount: request.approvalCount,
+                    rejectionCount: request.rejectionCount,
+                    totalVotes: request.totalVotes,
+                    totalUniversities
+                }
+            });
+        }
 
-        // Check if request should be approved or rejected
-        if (request.approvalCount >= requiredApprovals) {
-            // Enough approvals received
+        // Check if ALL universities have approved (100% unanimous)
+        if (request.approvalCount === totalUniversities) {
+            // 🎉 ALL universities approved - Auto-register on blockchain
             request.status = 'approved';
             
-            // Create university account
-            await University.create({
-                name: request.name,
-                username: request.username,
-                email: request.email,
-                password: request.password,
-                walletAddress: request.walletAddress,
-                status: 'approved'
-            });
-        } else if (request.rejectionCount > maxPossibleRejections) {
-            // Too many rejections - can't reach 70% approval anymore
-            request.status = 'rejected';
+            try {
+                // Create university account in MongoDB
+                const newUniversity = await University.create({
+                    name: request.name,
+                    username: request.username,
+                    email: request.email,
+                    password: request.password,
+                    walletAddress: request.walletAddress,
+                    status: 'approved'
+                });
+
+                // 🔗 Automatically register on Sepolia blockchain (backend-side)
+                const { ethers } = require('ethers');
+                const fs = require('fs');
+                const path = require('path');
+
+                try {
+                    // Load contract config
+                    const contractConfigPath = path.join(__dirname, '../university-registry-sepolia-config.json');
+                    const contractABIPath = path.join(__dirname, '../../frontend/src/UniversityRegistrySepolia.json');
+                    
+                    if (fs.existsSync(contractConfigPath) && fs.existsSync(contractABIPath)) {
+                        const contractConfig = JSON.parse(fs.readFileSync(contractConfigPath, 'utf8'));
+                        const contractABI = JSON.parse(fs.readFileSync(contractABIPath, 'utf8'));
+                        
+                        const CONTRACT_ADDRESS = process.env.UNIVERSITY_REGISTRY_SEPOLIA_ADDRESS || contractConfig.contractAddress;
+                        const RPC_URLS = [
+                            'https://ethereum-sepolia-rpc.publicnode.com',
+                            'https://rpc2.sepolia.org',
+                            process.env.RPC_URL_SEPOLIA
+                        ].filter(Boolean);
+
+                        // Try to connect to Sepolia
+                        let provider = null;
+                        for (const rpcUrl of RPC_URLS) {
+                            try {
+                                const tempProvider = new ethers.JsonRpcProvider(rpcUrl);
+                                await tempProvider.getBlockNumber();
+                                provider = tempProvider;
+                                break;
+                            } catch (err) {
+                                continue;
+                            }
+                        }
+
+                        if (provider && process.env.PRIVATE_KEY) {
+                            const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+                            const contract = new ethers.Contract(CONTRACT_ADDRESS, contractABI.abi, wallet);
+
+                            // Register on blockchain
+                            console.log('🔗 Registering university on Sepolia blockchain...');
+                            const tx = await contract.registerUniversity(
+                                request.name,
+                                request.username,
+                                request.email,
+                                request.walletAddress,
+                                'approved'
+                            );
+
+                            console.log('⏳ Waiting for blockchain confirmation...');
+                            const receipt = await tx.wait();
+                            console.log('✅ University registered on blockchain:', receipt.hash);
+
+                            // Update MongoDB with blockchain info
+                            await University.findByIdAndUpdate(newUniversity._id, {
+                                $set: {
+                                    blockchainRegistered: true,
+                                    blockchainTxHash: receipt.hash,
+                                    blockchainNetwork: 'sepolia',
+                                    blockchainRegisteredAt: new Date()
+                                }
+                            });
+
+                            console.log('✅ MongoDB updated with blockchain data');
+                        } else {
+                            console.warn('⚠️  Blockchain registration skipped - provider or private key not available');
+                        }
+                    } else {
+                        console.warn('⚠️  Blockchain registration skipped - contract config not found');
+                    }
+                } catch (blockchainError) {
+                    console.error('❌ Blockchain registration failed:', blockchainError.message);
+                    // Don't fail the entire approval - university is still created in MongoDB
+                }
+
+            } catch (createError) {
+                // Rollback if university creation fails
+                request.status = 'pending';
+                await request.save();
+                throw createError;
+            }
         }
-        // Otherwise, request stays 'pending' for more votes
+        // Otherwise, request stays 'pending' waiting for more votes
 
         await request.save();
 
+        // Prepare response message
+        let message = `Vote recorded successfully. Request status: ${request.status}`;
+        if (request.status === 'approved') {
+            message = '✅ Request approved! University has been registered and added to the blockchain.';
+        } else if (request.status === 'pending') {
+            const votesNeeded = totalUniversities - request.approvalCount;
+            message = `Vote recorded. Waiting for ${votesNeeded} more approval(s). (${request.approvalCount}/${totalUniversities} approved)`;
+        }
+
         res.status(200).json({
             success: true,
-            message: `Vote recorded successfully. Request status: ${request.status}`,
+            message,
             data: {
                 requestId: request._id,
                 status: request.status,
                 approvalCount: request.approvalCount,
                 rejectionCount: request.rejectionCount,
                 totalVotes: request.totalVotes,
-                requiredApprovals,
-                totalUniversities
+                requiredApprovals: totalUniversities, // 100% required
+                totalUniversities,
+                votesRemaining: totalUniversities - request.totalVotes
             }
         });
 

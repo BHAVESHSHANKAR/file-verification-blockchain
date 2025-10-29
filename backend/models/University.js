@@ -41,6 +41,24 @@ const universitySchema = new mongoose.Schema({
     certificatesIssued: {
         type: Number,
         default: 0
+    },
+    // Blockchain registration fields
+    blockchainRegistered: {
+        type: Boolean,
+        default: false
+    },
+    blockchainTxHash: {
+        type: String,
+        default: null
+    },
+    blockchainNetwork: {
+        type: String,
+        enum: ['sepolia', 'polygon', null],
+        default: null
+    },
+    blockchainRegisteredAt: {
+        type: Date,
+        default: null
     }
 }, {
     timestamps: true

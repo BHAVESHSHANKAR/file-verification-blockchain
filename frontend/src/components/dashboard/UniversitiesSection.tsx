@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Building2, Loader2, Mail, User, RefreshCw } from 'lucide-react'
+import { Building2, Loader2, Mail, User, RefreshCw, CheckCircle, ExternalLink, Copy } from 'lucide-react'
 import axios from 'axios'
 import { API_ENDPOINTS } from '@/config/api'
 import { Button } from '@/components/ui/button'
@@ -12,12 +12,45 @@ interface University {
     walletAddress: string
     certificatesIssued: number
     createdAt: string
+    blockchainRegistered?: boolean
+    blockchainTxHash?: string
+    blockchainNetwork?: 'sepolia' | 'polygon'
+    blockchainRegisteredAt?: string
 }
 
 export default function UniversitiesSection() {
     const [universities, setUniversities] = useState<University[]>([])
     const [loading, setLoading] = useState(true)
     const [refreshing, setRefreshing] = useState(false)
+
+    const showToast = (message: string, type: 'success' | 'error') => {
+        const toast = document.createElement('div')
+        toast.className = `fixed top-4 right-4 z-50 px-6 py-4 rounded-lg shadow-lg text-white font-medium animate-in slide-in-from-top-5 ${
+            type === 'success' ? 'bg-green-600' : 'bg-red-600'
+        }`
+        toast.textContent = message
+        document.body.appendChild(toast)
+        setTimeout(() => {
+            toast.classList.add('animate-out', 'slide-out-to-top-5')
+            setTimeout(() => document.body.removeChild(toast), 300)
+        }, 3000)
+    }
+
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text)
+        showToast('Transaction hash copied!', 'success')
+    }
+
+    const getExplorerUrl = (txHash: string, network: 'sepolia' | 'polygon') => {
+        if (network === 'sepolia') {
+            return `https://sepolia.etherscan.io/tx/${txHash}`
+        }
+        return `https://amoy.polygonscan.com/tx/${txHash}`
+    }
+
+    const getNetworkName = (network: 'sepolia' | 'polygon') => {
+        return network === 'sepolia' ? 'Sepolia' : 'Polygon Amoy'
+    }
 
     useEffect(() => {
         fetchUniversities()
@@ -112,7 +145,51 @@ export default function UniversitiesSection() {
                                                 <span className="truncate">{university.email}</span>
                                             </div>
                                         </div>
-                                        <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
+                                        
+                                        {/* Blockchain Registration Status */}
+                                        {university.blockchainRegistered && university.blockchainTxHash && university.blockchainNetwork ? (
+                                            <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700 space-y-2">
+                                                <div className="flex items-center gap-2 px-2 py-1 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800 w-fit">
+                                                    <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                                    <span className="text-xs font-medium text-green-700 dark:text-green-300">
+                                                        Registered on {getNetworkName(university.blockchainNetwork)}
+                                                    </span>
+                                                </div>
+                                                
+                                                <div className="flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => window.open(getExplorerUrl(university.blockchainTxHash!, university.blockchainNetwork!), '_blank')}
+                                                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                                                    >
+                                                        <ExternalLink className="h-3 w-3" />
+                                                        View on Blockchain
+                                                    </button>
+                                                    <button
+                                                        onClick={() => copyToClipboard(university.blockchainTxHash!)}
+                                                        className="text-xs text-neutral-600 dark:text-neutral-400 hover:text-blue-600 dark:hover:text-blue-400"
+                                                        title="Copy transaction hash"
+                                                    >
+                                                        <Copy className="h-3 w-3" />
+                                                    </button>
+                                                </div>
+                                                
+                                                {university.blockchainRegisteredAt && (
+                                                    <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                                                        Blockchain: {new Date(university.blockchainRegisteredAt).toLocaleDateString()}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <div className="mt-4 pt-4 border-t border-neutral-200 dark:border-neutral-700">
+                                                <div className="flex items-center gap-2 px-2 py-1 bg-yellow-50 dark:bg-yellow-900/20 rounded-md border border-yellow-200 dark:border-yellow-800 w-fit">
+                                                    <span className="text-xs font-medium text-yellow-700 dark:text-yellow-300">
+                                                        Not on Blockchain
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        <div className="mt-2">
                                             <p className="text-xs text-neutral-500 dark:text-neutral-400">
                                                 Joined: {new Date(university.createdAt).toLocaleDateString()}
                                             </p>

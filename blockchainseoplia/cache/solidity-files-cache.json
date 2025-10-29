@@ -37,6 +37,43 @@
       "artifacts": [
         "CertificateRegistrySeoplia"
       ]
+    },
+    "D:\\clients\\project vahitha\\blockchainseoplia\\contracts\\UniversityRegistrySepolia.sol": {
+      "lastModificationDate": 1761744358032,
+      "contentHash": "1e29c356cc0085030cdf0d3318a164f8",
+      "sourceName": "contracts/UniversityRegistrySepolia.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "viaIR": true,
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "UniversityRegistrySepolia"
+      ]
     }
   }
 }
